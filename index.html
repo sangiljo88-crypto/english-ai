@@ -479,6 +479,8 @@ input,textarea{font-family:inherit;outline:none;}
 @media(max-width:480px){
   #avatarContainer{width:220px!important;height:280px!important;}
   #avatarTapBtn{padding:12px 24px;font-size:14px;}
+  #avatarSelector{gap:6px!important;}
+  #avatarSelector > div{padding:8px!important;font-size:12px;}
 }
 </style>
 </head>
@@ -680,6 +682,11 @@ input,textarea{font-family:inherit;outline:none;}
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <h2>⚙️ 설정</h2>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;display:block;">AI 코치 아바타</label>
+      <div id="avatarSelector" style="display:flex;gap:8px;"></div>
+      <p style="font-size:11px;color:var(--text-secondary);margin-top:6px;">음성 대화 모드에서 선택한 아바타가 표시됩니다</p>
+    </div>
     <div class="setting-item">
       <label>API 키</label>
       <input type="password" id="settingsApiKey" placeholder="sk-..." style="width:180px;padding:8px;border:1px solid #E2E8F0;border-radius:8px;font-size:12px;">
@@ -3675,7 +3682,7 @@ async function voiceConversationTurn(){
 
     // === SPEAK ===
     setVoiceOrbState('speaking');
-    await speak(result.content);
+    if(window.speakWithAvatar){await window.speakWithAvatar(result.content,'en-US');}else{await speak(result.content);}
 
     if(!voiceActive || !voiceAutoLoop) return;
 
@@ -4328,15 +4335,44 @@ init();
 <script type="module">
 import { TalkingHead } from "talkinghead";
 
+// ===== AVATAR OPTIONS =====
+const AVATAR_OPTIONS = [
+  {
+    id: 'emma',
+    name: 'Emma',
+    desc: '친절한 여성 코치',
+    emoji: '👩‍🏫',
+    url: 'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb?morphTargets=ARKit,Oculus+Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown&textureSizeLimit=1024&textureFormat=png',
+    body: 'F',
+    ttsVoice: 'nova'
+  },
+  {
+    id: 'james',
+    name: 'James',
+    desc: '차분한 남성 코치',
+    emoji: '👨‍🏫',
+    url: 'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb?morphTargets=ARKit,Oculus+Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown&textureSizeLimit=1024&textureFormat=png',
+    body: 'M',
+    ttsVoice: 'onyx'
+  }
+];
+
+function getSelectedAvatar() {
+  const id = localStorage.getItem('selectedAvatar') || 'emma';
+  return AVATAR_OPTIONS.find(a => a.id === id) || AVATAR_OPTIONS[0];
+}
+
 let talkingHead = null;
 let avatarReady = false;
 
+// ===== INIT AVATAR =====
 async function initAvatar() {
   const container = document.getElementById('avatarContainer');
   if (!container || talkingHead) return;
 
-  // 로딩 표시
   container.innerHTML = '<div class="avatar-loading">아바타 로딩중...</div>';
+
+  const selected = getSelectedAvatar();
 
   try {
     talkingHead = new TalkingHead(container, {
@@ -4355,8 +4391,8 @@ async function initAvatar() {
     });
 
     await talkingHead.showAvatar({
-      url: 'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb?morphTargets=ARKit,Oculus+Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown&textureSizeLimit=1024&textureFormat=png',
-      body: 'F',
+      url: selected.url,
+      body: selected.body,
       avatarMood: 'neutral',
       lipsyncLang: 'en'
     }, (ev) => {
@@ -4367,7 +4403,6 @@ async function initAvatar() {
       }
     });
 
-    // 로딩 텍스트 제거
     let loadDiv = container.querySelector('.avatar-loading');
     if (loadDiv) loadDiv.remove();
 
@@ -4377,13 +4412,45 @@ async function initAvatar() {
   } catch (error) {
     console.error('Avatar load error:', error);
     container.innerHTML = '<div class="avatar-loading">아바타 로딩 실패</div>';
-    // 폴백: voice orb 다시 표시
     const orbWrapper = document.getElementById('voiceOrbWrapper');
     if (orbWrapper) orbWrapper.style.display = 'flex';
   }
 }
 
-// openVoiceMode 함수 확장: 음성 대화 열 때 아바타 초기화
+// ===== MOOD DETECTION =====
+window.detectMoodFromText = function(text) {
+  const t = text.toLowerCase();
+  if (/great|excellent|perfect|awesome|wonderful|fantastic|well done|good job|amazing|brilliant|congratulations|proud/i.test(t)) return 'happy';
+  if (/sorry|sad|unfortunately|difficult|hard time|don't worry|it's okay/i.test(t)) return 'sad';
+  if (/wow|really|oh my|incredible|unbelievable|no way|surprised/i.test(t)) return 'happy';
+  if (/hmm|let me think|interesting|i wonder|what do you think|how about/i.test(t)) return 'neutral';
+  if (/love|heart|sweet|kind|beautiful|lovely/i.test(t)) return 'love';
+  return 'neutral';
+};
+
+// ===== GESTURE =====
+window.triggerAvatarGesture = function(text) {
+  const head = talkingHead;
+  if (!head || !avatarReady) return;
+  const t = text.toLowerCase();
+  try {
+    if (/great|perfect|awesome|good job|well done|excellent/i.test(t)) {
+      head.playGesture('thumbup', 3, false, 800);
+    } else if (/hello|hi |hey|welcome|nice to meet/i.test(t)) {
+      head.playGesture('handup', 2, false, 800);
+    } else if (/for example|let me explain|the point is|remember|important/i.test(t)) {
+      head.playGesture('index', 3, false, 800);
+    } else if (/exactly|that's right|correct|of course|sure/i.test(t)) {
+      head.playGesture('ok', 2, false, 800);
+    } else if (/i'm not sure|maybe|it depends|hard to say/i.test(t)) {
+      head.playGesture('shrug', 2, false, 800);
+    }
+  } catch(e) {
+    console.log('Gesture not available:', e.message);
+  }
+};
+
+// ===== OPEN/CLOSE VOICE MODE =====
 const originalOpenVoiceMode = window.openVoiceMode;
 window.openVoiceMode = function() {
   if (originalOpenVoiceMode) originalOpenVoiceMode();
@@ -4395,17 +4462,42 @@ window.openVoiceMode = function() {
   }
 };
 
-// closeVoiceMode 확장: 닫을 때 애니메이션 중지 (메모리 절약)
 const originalCloseVoiceMode = window.closeVoiceMode;
 window.closeVoiceMode = function() {
   if (originalCloseVoiceMode) originalCloseVoiceMode();
   if (talkingHead) talkingHead.stop();
 };
 
-// setVoiceOrbState 확장: 아바타 탭 버튼 상태 동기화
+// ===== SET VOICE ORB STATE (extended) =====
 const originalSetVoiceOrbState = window.setVoiceOrbState;
 window.setVoiceOrbState = function(s) {
   if (originalSetVoiceOrbState) originalSetVoiceOrbState(s);
+
+  // 아바타 mood + 눈맞춤 연동
+  const head = talkingHead;
+  const ready = avatarReady;
+  if (head && ready) {
+    try {
+      switch(s) {
+        case 'listening':
+          head.setMood('neutral');
+          try { head.makeEyeContact(30000); } catch(e) {}
+          break;
+        case 'thinking':
+          head.setMood('neutral');
+          break;
+        case 'speaking':
+          head.setMood('happy');
+          break;
+        case 'idle':
+          head.setMood('neutral');
+          try { head.lookAtCamera(5000); } catch(e) {}
+          break;
+      }
+    } catch(e) {}
+  }
+
+  // 탭 버튼 상태 동기화
   const btn = document.getElementById('avatarTapBtn');
   if (!btn) return;
   btn.className = '';
@@ -4428,7 +4520,7 @@ window.setVoiceOrbState = function(s) {
   }
 };
 
-// 탭 비활성 시 멈춤
+// ===== VISIBILITY CHANGE =====
 document.addEventListener("visibilitychange", function() {
   if (!talkingHead) return;
   if (document.visibilityState === "visible") {
@@ -4438,7 +4530,151 @@ document.addEventListener("visibilitychange", function() {
   }
 });
 
-// 전역 접근 가능하게
+// ===== SPEAK WITH AVATAR (OpenAI TTS + lipsync) =====
+window.speakWithAvatar = async function(text, lang) {
+  const head = talkingHead;
+  const ready = avatarReady;
+
+  if (!head || !ready || !window.state || !window.state.apiKey) {
+    return window.speak(text, lang);
+  }
+
+  const ttsText = window.stripKoreanForTTS ? window.stripKoreanForTTS(text) : text;
+  if (!ttsText || !ttsText.trim()) return;
+
+  try {
+    // 감정 분석 후 mood 설정
+    const detectedMood = window.detectMoodFromText(text);
+    head.setMood(detectedMood);
+
+    // 아바타에 맞는 TTS 음성 선택
+    const selected = getSelectedAvatar();
+    const ttsVoice = selected.ttsVoice || 'nova';
+
+    // OpenAI TTS API로 음성 생성
+    const ttsResponse = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + window.state.apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'tts-1',
+        input: ttsText,
+        voice: ttsVoice,
+        response_format: 'mp3',
+        speed: (window.state.settings && window.state.settings.ttsSpeed) || 0.85
+      })
+    });
+
+    if (!ttsResponse.ok) {
+      throw new Error('TTS API error: ' + ttsResponse.status);
+    }
+
+    const audioBlob = await ttsResponse.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuf = await audioBlob.arrayBuffer();
+    const decodedAudio = await audioCtx.decodeAudioData(arrayBuf);
+
+    const words = ttsText.split(/\s+/).filter(w => w.length > 0);
+    const duration = decodedAudio.duration * 1000;
+    const avgWordDuration = words.length > 0 ? duration / words.length : duration;
+    const wtimes = words.map((_, i) => Math.round(i * avgWordDuration));
+    const wdurations = words.map(() => Math.round(avgWordDuration * 0.9));
+
+    // 립싱크 재생
+    const speakPromise = head.speakAudio(
+      decodedAudio,
+      { lipsyncLang: 'en' },
+      words,
+      wtimes,
+      wdurations
+    );
+
+    // 제스처 트리거
+    window.triggerAvatarGesture(text);
+
+    if (speakPromise && typeof speakPromise.then === 'function') {
+      await speakPromise;
+    } else {
+      await new Promise(r => setTimeout(r, duration + 300));
+    }
+
+    URL.revokeObjectURL(audioUrl);
+    await audioCtx.close();
+    head.setMood('neutral');
+
+  } catch (error) {
+    console.warn('Avatar speak fallback:', error.message);
+    try { head.setMood('neutral'); } catch(e) {}
+    return window.speak(text, lang);
+  }
+};
+
+// ===== AVATAR SELECTOR =====
+function renderAvatarSelector() {
+  const container = document.getElementById('avatarSelector');
+  if (!container) return;
+
+  const currentId = localStorage.getItem('selectedAvatar') || 'emma';
+
+  container.innerHTML = AVATAR_OPTIONS.map(av => `
+    <div onclick="window.selectAvatar('${av.id}')"
+         style="flex:1;padding:12px;border-radius:12px;text-align:center;cursor:pointer;transition:all .2s;
+                border:2px solid ${av.id === currentId ? 'var(--primary)' : '#E2E8F0'};
+                background:${av.id === currentId ? '#EEF2FF' : 'var(--card)'};">
+      <div style="font-size:28px;">${av.emoji}</div>
+      <div style="font-size:13px;font-weight:600;margin-top:4px;">${av.name}</div>
+      <div style="font-size:11px;color:var(--text-secondary);">${av.desc}</div>
+    </div>
+  `).join('');
+}
+
+window.selectAvatar = async function(avatarId) {
+  localStorage.setItem('selectedAvatar', avatarId);
+  renderAvatarSelector();
+
+  const head = talkingHead;
+  if (head && avatarReady) {
+    const avatar = AVATAR_OPTIONS.find(a => a.id === avatarId);
+    if (avatar) {
+      try {
+        const container = document.getElementById('avatarContainer');
+        if (container) {
+          const loadDiv = document.createElement('div');
+          loadDiv.className = 'avatar-loading';
+          loadDiv.textContent = '아바타 변경중...';
+          container.appendChild(loadDiv);
+        }
+
+        await head.showAvatar({
+          url: avatar.url,
+          body: avatar.body,
+          avatarMood: 'neutral',
+          lipsyncLang: 'en'
+        });
+
+        if (container) {
+          const ld = container.querySelector('.avatar-loading');
+          if (ld) ld.remove();
+        }
+      } catch(e) {
+        console.error('Avatar switch error:', e);
+      }
+    }
+  }
+};
+
+// openSettings 확장: 아바타 선택 UI 렌더링
+const originalOpenSettings = window.openSettings;
+window.openSettings = function() {
+  if (originalOpenSettings) originalOpenSettings();
+  setTimeout(renderAvatarSelector, 100);
+};
+
+// ===== GLOBAL ACCESS =====
 window.talkingHead = null;
 window.avatarReady = false;
 window.getTalkingHead = () => talkingHead;
