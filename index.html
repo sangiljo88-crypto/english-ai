@@ -4357,6 +4357,14 @@ const AVATAR_OPTIONS = [
   }
 ];
 
+let avatarAudioCtx = null;
+function getAvatarAudioCtx() {
+  if (!avatarAudioCtx || avatarAudioCtx.state === 'closed') {
+    avatarAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return avatarAudioCtx;
+}
+
 function getSelectedAvatar() {
   const id = localStorage.getItem('selectedAvatar') || 'emma';
   return AVATAR_OPTIONS.find(a => a.id === id) || AVATAR_OPTIONS[0];
@@ -4562,7 +4570,7 @@ window.speakWithAvatar = async function(text, lang) {
         model: 'tts-1',
         input: ttsText,
         voice: ttsVoice,
-        response_format: 'mp3',
+        response_format: 'wav',
         speed: (window.state.settings && window.state.settings.ttsSpeed) || 0.85
       })
     });
@@ -4572,9 +4580,7 @@ window.speakWithAvatar = async function(text, lang) {
     }
 
     const audioBlob = await ttsResponse.blob();
-    const audioUrl = URL.createObjectURL(audioBlob);
-
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const audioCtx = getAvatarAudioCtx();
     const arrayBuf = await audioBlob.arrayBuffer();
     const decodedAudio = await audioCtx.decodeAudioData(arrayBuf);
 
@@ -4584,26 +4590,19 @@ window.speakWithAvatar = async function(text, lang) {
     const wtimes = words.map((_, i) => Math.round(i * avgWordDuration));
     const wdurations = words.map(() => Math.round(avgWordDuration * 0.9));
 
-    // 립싱크 재생
-    const speakPromise = head.speakAudio(
-      decodedAudio,
-      { lipsyncLang: 'en' },
-      words,
-      wtimes,
-      wdurations
-    );
+    // 립싱크 재생 (올바른 객체 형식)
+    head.speakAudio({
+      audio: decodedAudio,
+      words: words,
+      wtimes: wtimes,
+      wdurations: wdurations
+    }, { lipsyncLang: 'en' });
 
     // 제스처 트리거
     window.triggerAvatarGesture(text);
 
-    if (speakPromise && typeof speakPromise.then === 'function') {
-      await speakPromise;
-    } else {
-      await new Promise(r => setTimeout(r, duration + 300));
-    }
+    await new Promise(r => setTimeout(r, duration + 500));
 
-    URL.revokeObjectURL(audioUrl);
-    await audioCtx.close();
     head.setMood('neutral');
 
   } catch (error) {
