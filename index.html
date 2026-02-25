@@ -2403,12 +2403,14 @@ async function listenWhisper(lang='en-US', timeout=8000, prompt=''){
       }
     },timeout);
 
-    // 녹음 시작 (100ms 간격으로 데이터 수집)
-    try{
-      mediaRecorder.start(100);
-    }catch(e){
-      cleanup();resolve('');
-    }
+    // 녹음 시작 (300ms 대기 후 → 이전 TTS 잔여 소리 방지)
+    setTimeout(()=>{
+      try{
+        if(!done) mediaRecorder.start(100);
+      }catch(e){
+        cleanup();resolve('');
+      }
+    },300);
   });
 }
 
@@ -4236,7 +4238,11 @@ async function handleOrbTap(){
 
 async function voiceConversationTurn(){
   if(!voiceActive || !voiceAutoLoop) return;
+  // 동시 실행 방지
+  if(voiceConversationTurn._running) return;
+  voiceConversationTurn._running=true;
 
+  try{
   // === LISTEN ===
   setVoiceOrbState('listening');
   const transcriptEl=document.getElementById('voiceTranscript');
@@ -4247,7 +4253,7 @@ async function voiceConversationTurn(){
     onInterim:(partial)=>{if(transcriptEl) transcriptEl.textContent=partial+'...';}
   });
 
-  if(!voiceActive || !voiceAutoLoop) return;
+  if(!voiceActive || !voiceAutoLoop){return;}
 
   if(!text){
     // No speech detected - pause auto-loop, return to idle
@@ -4255,6 +4261,24 @@ async function voiceConversationTurn(){
     setVoiceOrbState('idle');
     document.getElementById('voiceTranscript').textContent='음성을 인식하지 못했어요. 탭하여 다시 시작';
     return;
+  }
+
+  // === 중복 감지: Whisper가 AI 음성을 녹음한 경우 필터링 ===
+  const lastAiMsg=voiceMessages.filter(m=>m.role==='assistant').pop();
+  if(lastAiMsg){
+    const sim=getSimilarity(lastAiMsg.content, text);
+    if(sim>=60){
+      console.log('Echo filter: ignoring AI echo (similarity:'+sim+'%)');
+      // AI 소리를 녹음한 것이므로 무시하고 다시 듣기
+      document.getElementById('voiceTranscript').textContent='';
+      setVoiceOrbState('idle');
+      await new Promise(r=>setTimeout(r,500));
+      if(voiceActive && voiceAutoLoop){
+        voiceConversationTurn._running=false;
+        voiceConversationTurn();
+      }
+      return;
+    }
   }
 
   // Show user transcript
@@ -4275,7 +4299,7 @@ async function voiceConversationTurn(){
     checkGrammar(text)
   ]);
 
-  if(!voiceActive || !voiceAutoLoop) return;
+  if(!voiceActive || !voiceAutoLoop){return;}
 
   if(!result.error){
     voiceMessages.push({role:'assistant',content:result.content});
@@ -4291,7 +4315,7 @@ async function voiceConversationTurn(){
     setVoiceOrbState('speaking');
     if(window.speakWithAvatar){await window.speakWithAvatar(result.content,'en-US');}else{await speak(result.content);}
 
-    if(!voiceActive || !voiceAutoLoop) return;
+    if(!voiceActive || !voiceAutoLoop){return;}
 
     // Award XP
     state.dailyXp+=2;
@@ -4303,18 +4327,22 @@ async function voiceConversationTurn(){
     saveState();
     updateHeader();
 
-    // === AUTO NEXT TURN === (brief pause then listen again)
+    // === AUTO NEXT TURN === (1초 대기 → 잔여 오디오 방지)
     document.getElementById('voiceTranscript').textContent='';
-    setTimeout(()=>{
-      if(voiceActive && voiceAutoLoop){
-        voiceConversationTurn();
-      }
-    },400);
+    setVoiceOrbState('idle');
+    await new Promise(r=>setTimeout(r,1000));
+    if(voiceActive && voiceAutoLoop){
+      voiceConversationTurn._running=false;
+      voiceConversationTurn();
+    }
 
   } else {
     addVoiceMsg('ai','(Error: '+result.message+')');
     voiceAutoLoop=false;
     setVoiceOrbState('idle');
+  }
+  }finally{
+    voiceConversationTurn._running=false;
   }
 }
 
