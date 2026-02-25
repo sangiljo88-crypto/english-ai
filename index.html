@@ -2269,44 +2269,93 @@ let recognitionResolve=null;
 // options: { lang, timeout, prompt, onInterim }
 let _whisperStream=null; // 현재 활성 MediaStream (정리용)
 
-async function listenWhisper(lang='en-US', timeout=8000, prompt=''){
-  // Stop any ongoing TTS
-  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+async function listenWhisper(lang, timeout, prompt){
+  return new Promise(async(resolve)=>{
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      
+      // mimeType 호환성 처리 (iOS Safari는 audio/mp4만 지원)
+      let mimeType='';
+      let fileExt='webm';
+      const types=['audio/webm;codecs=opus','audio/webm','audio/mp4','video/mp4','audio/ogg;codecs=opus',''];
+      for(const t of types){
+        if(!t || MediaRecorder.isTypeSupported(t)){
+          mimeType=t;
+          if(t.includes('mp4')) fileExt='mp4';
+          else if(t.includes('ogg')) fileExt='ogg';
+          else fileExt='webm';
+          break;
+        }
+      }
+      
+      const recorder=mimeType
+        ? new MediaRecorder(stream,{mimeType})
+        : new MediaRecorder(stream);
+      const chunks=[];
+      let stopped=false;
+      
+      recorder.ondataavailable=(e)=>{if(e.data.size>0) chunks.push(e.data);};
+      
+      recorder.onstop=async()=>{
+        if(stopped) return;
+        stopped=true;
+        stream.getTracks().forEach(t=>t.stop());
+        if(chunks.length===0){resolve('');return;}
+        
+        const blob=new Blob(chunks,{type:mimeType||'audio/webm'});
+        if(blob.size<500){resolve('');return;}
+        
+        try{
+          const formData=new FormData();
+          formData.append('file',blob,'audio.'+fileExt);
+          formData.append('model','whisper-1');
+          const whisperLang=lang==='ko-KR'?'ko':lang==='en-US'?'en':lang.split('-')[0];
+          formData.append('language',whisperLang);
+          if(prompt) formData.append('prompt',prompt);
+          formData.append('temperature','0.0');
 
-  let stream=null;
-  let mediaRecorder=null;
-  let audioChunks=[];
-  let silenceTimer=null;
-  let mainTimer=null;
-  let done=false;
-  let analyser=null;
-  let animFrame=null;
+          const apiCfg=getAPIConfig('/v1/audio/transcriptions');
+          const resp=await fetch(apiCfg.url,{
+            method:'POST',
+            headers:apiCfg.headers,
+            body:formData
+          });
 
-  const whisperLang = lang.startsWith('ko') ? 'ko' : 'en';
+          if(!resp.ok){
+            console.warn('Whisper API error:',resp.status);
+            resolve('');return;
+          }
+          const data=await resp.json();
+          resolve(data.text||'');
+        }catch(e){
+          console.warn('Whisper upload error:',e);
+          resolve('');
+        }
+      };
 
-  const cleanup=()=>{
-    done=true;
-    if(animFrame) cancelAnimationFrame(animFrame);
-    if(silenceTimer) clearTimeout(silenceTimer);
-    if(mainTimer) clearTimeout(mainTimer);
-    try{if(mediaRecorder && mediaRecorder.state!=='inactive') mediaRecorder.stop();}catch(e){}
-    try{if(stream){stream.getTracks().forEach(t=>t.stop());}}catch(e){}
-    _whisperStream=null;
-  };
+      recorder.onerror=(e)=>{
+        console.warn('MediaRecorder error:',e);
+        stream.getTracks().forEach(t=>t.stop());
+        resolve('');
+      };
 
-  try{
-    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,sampleRate:16000}});
-    _whisperStream=stream;
-  }catch(e){
-    if(e.name==='NotAllowedError'||e.name==='PermissionDeniedError'){
-      showSttWarning('🎤 마이크 권한이 거부되었습니다. 브라우저 설정에서 마이크 접근을 허용해주세요.');
-    } else if(e.name==='NotFoundError'){
-      showSttWarning('🎤 마이크를 찾을 수 없습니다. 마이크가 연결되어 있는지 확인해주세요.');
-    } else {
-      showSttWarning('🎤 마이크 접근 오류: '+e.message);
+      // 100ms 간격으로 데이터 수집 (모바일 호환성 개선)
+      recorder.start(100);
+      
+      setTimeout(()=>{
+        try{
+          if(recorder.state==='recording') recorder.stop();
+        }catch(e){resolve('');}
+      },timeout);
+      
+    }catch(e){
+      console.warn('Whisper mic error:',e);
+      // 마이크 접근 실패 시 Web Speech API 폴백
+      showSttWarning('마이크 접근에 실패했습니다. 브라우저 설정을 확인해주세요.');
+      resolve('');
     }
-    return '';
-  }
+  });
+}
 
   return new Promise((resolve)=>{
     const mimeType=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':
