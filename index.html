@@ -1759,8 +1759,10 @@ function speak(text, lang='en-US'){
     if('speechSynthesis' in window){
       window.speechSynthesis.cancel();
       // If reading in English, strip Korean text so TTS only reads English
-      const ttsText=(lang==='en-US'||lang==='en-GB'||lang.startsWith('en'))
+      let ttsText=(lang==='en-US'||lang==='en-GB'||lang.startsWith('en'))
         ? stripKoreanForTTS(text) : text;
+      // Remove emojis (TTS reads them aloud as English words)
+      ttsText=ttsText.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu,'').trim();
       if(!ttsText||!ttsText.trim()){resolve();return;}
       const u=new SpeechSynthesisUtterance(ttsText);
       u.lang=lang;
@@ -1941,14 +1943,32 @@ async function callGPT(messages, maxTokens=300){
 
 function getSystemPrompt(){
   const lv=state.level;
-  const base=`You are "My English Coach", a friendly English tutor. Use the Echo Coaching method: when the user makes an error, do NOT point it out directly. Instead, naturally rephrase their sentence correctly in your response.\n\nIMPORTANT: The user may speak or type in Korean sometimes. If the user speaks in Korean, understand what they mean, respond warmly in English (with Korean translation as appropriate for their level), and gently encourage them to try saying it in English. For example, if user says "나는 커피를 좋아해", respond like: "Oh, you like coffee! ☕ (커피 좋아하시는군요!) Try saying: I like coffee!"\n\n`;
   
-  if(lv===0) return base+`The user is at SEED level (Pre-A1). Use only single words or very simple phrases. Always include Korean translation after every English word/phrase like this: "Apple 🍎 (사과)". Use lots of emojis. Be extremely encouraging. Keep responses under 20 words.`;
-  if(lv===1) return base+`The user is at SPROUT level (A1). Use 1-3 word responses. Always include Korean translation after English like: "Hello! (안녕하세요!)". Use simple words only. Be very encouraging. Keep responses under 30 words.`;
-  if(lv===2) return base+`The user is at BLOOM level (A2). Use short, complete sentences. Apply Echo Coaching for errors. Include Korean translation for new or difficult words. Ask simple follow-up questions. Keep responses under 50 words.`;
-  if(lv===3) return base+`The user is at BRANCH level (B1). Have natural conversations. Apply Echo Coaching subtly. Only translate when the user seems confused. Ask thought-provoking questions. Introduce useful expressions. Keep responses under 80 words.`;
-  if(lv===4) return base+`The user is at CANOPY level (B2). Discuss abstract topics, debates, presentations. Use sophisticated vocabulary. Apply Echo Coaching naturally. Challenge the user to express complex ideas. Keep responses under 100 words.`;
-  return base+`The user is at SKY level (C1+). Have fluent, natural conversations on any topic. Use idioms, nuanced expressions. Only provide coaching when major errors occur. Discuss professional, academic, or complex topics. Keep responses under 120 words.`;
+  const base=`You are "Emma", a warm and friendly English tutor having a real conversation. You speak like a real person, not a textbook.
+
+CRITICAL RULES:
+1. NEVER use emojis in your spoken responses. No emojis at all. They get read aloud by TTS and sound terrible.
+2. Use natural, conversational English. Say "Hey!" not "Hello! 😊". Say "Nice!" not "Great job! 🎉".
+3. When the user makes a grammar or pronunciation mistake, use Echo Coaching: naturally rephrase what they said correctly in your response WITHOUT pointing out the error directly. Then casually say the correct version like "By the way, you can say: [correct sentence]" only if the error is significant.
+4. Keep responses SHORT for voice conversation. 1-2 sentences max for beginners, 2-3 for advanced.
+5. Sound like a real friend, not a teacher giving a lecture.
+6. If the user speaks Korean, understand it, respond in English with a brief Korean translation in parentheses, then encourage them to try in English with a specific phrase to repeat.
+7. Always ask a follow-up question to keep the conversation flowing naturally.
+8. Use contractions naturally: "I'm", "you're", "that's", "don't" instead of formal forms.
+
+ECHO COACHING EXAMPLES:
+- User says "I go to school yesterday" -> You say: "Oh, you went to school yesterday? What did you do there?" (naturally using the correct past tense)
+- User says "I am have a dog" -> You say: "You have a dog? That's cool! What's its name?"
+- For significant errors, add: "By the way, a natural way to say that is: I went to school yesterday."
+
+`;
+  
+  if(lv===0) return base+`The user is a complete beginner (Pre-A1). Use single words and very short phrases. Always add Korean translation in parentheses right after English: "Hi there! (안녕!) What's your name? (이름이 뭐예요?)". Speak slowly and simply. Max 15 words per response.`;
+  if(lv===1) return base+`The user is at beginner level (A1). Use very simple sentences. Add Korean translation for key phrases: "That's great! (잘했어요!) Do you like music? (음악 좋아해요?)". Be extra encouraging. Max 20 words.`;
+  if(lv===2) return base+`The user is at elementary level (A2). Use short, complete sentences. Only translate new or difficult words. Ask simple follow-up questions. Max 30 words.`;
+  if(lv===3) return base+`The user is at intermediate level (B1). Have natural conversations. Only translate when they seem confused. Introduce useful expressions. Challenge them slightly. Max 50 words.`;
+  if(lv===4) return base+`The user is at upper-intermediate level (B2). Discuss interesting topics naturally. Use sophisticated vocabulary. Provide subtle corrections. Max 60 words.`;
+  return base+`The user is advanced (C1+). Have fluent, natural conversations. Use idioms and nuanced expressions. Only correct major errors. Discuss any topic deeply. Max 80 words.`;
 }
 
 // ===== ADAPTIVE DIFFICULTY =====
@@ -3538,7 +3558,7 @@ function openVoiceMode(){
   document.getElementById('voiceLevelBadge').textContent=`Lv.${state.level} ${lv.name}`;
 
   // Init system prompt
-  voiceMessages=[{role:'system',content:getSystemPrompt()+'\n\nYou are in voice conversation mode. Keep responses concise (1-2 sentences for lower levels, 2-3 for higher). Be warm and encouraging. Use simple words for beginners.\n\nCRITICAL: The user may speak in Korean. When they do, ALWAYS respond primarily in English. Understand their Korean input, reply in English with Korean translation in parentheses for their level. Then encourage them to try saying it in English. Example: If user says "오늘 날씨 좋다", respond: "Yes, the weather is great today! (오늘 날씨 정말 좋죠!) Try saying: The weather is nice today! ☀️"'}];
+  voiceMessages=[{role:'system',content:getSystemPrompt()+'\n\nThis is a VOICE conversation. Rules: Keep every response under 2 sentences. Be warm and natural. Ask one simple question at the end. Never use emojis. Sound like chatting with a friend.'}];
 
   // Reset history
   document.getElementById('voiceHistory').innerHTML='';
@@ -3550,6 +3570,24 @@ function openVoiceMode(){
   voiceSttLang='ko-KR';
   const langBtn=document.getElementById('voiceLangToggle');
   if(langBtn){langBtn.textContent='🌐 한국어+영어';langBtn.style.background='rgba(129,140,248,.3)';}
+
+  // 자동 첫 인사
+  setTimeout(async()=>{
+    if(!voiceActive) return;
+    setVoiceOrbState('thinking');
+    const greetings=[
+      {en:"Hey! Nice to see you. How's your day going?",ko:"(안녕! 반가워요. 오늘 하루 어때요?)"},
+      {en:"Hi there! Ready to practice some English? What's on your mind?",ko:"(안녕! 영어 연습할 준비 됐어요? 무슨 생각해요?)"},
+      {en:"Hey! Good to see you again. What did you do today?",ko:"(안녕! 또 만나서 반가워요. 오늘 뭐 했어요?)"}
+    ];
+    const g=greetings[Math.floor(Math.random()*greetings.length)];
+    const fullGreeting=state.level<=1?g.en+' '+g.ko:g.en;
+    voiceMessages.push({role:'assistant',content:fullGreeting});
+    addVoiceMsg('ai',fullGreeting);
+    setVoiceOrbState('speaking');
+    if(window.speakWithAvatar){await window.speakWithAvatar(fullGreeting,'en-US');}else{await speak(fullGreeting);}
+    if(voiceActive){setVoiceOrbState('idle');document.getElementById('voiceTranscript').textContent='';}
+  },800);
 }
 
 function closeVoiceMode(){
@@ -4547,7 +4585,9 @@ window.speakWithAvatar = async function(text, lang) {
     return window.speak(text, lang);
   }
 
-  const ttsText = window.stripKoreanForTTS ? window.stripKoreanForTTS(text) : text;
+  let ttsText = window.stripKoreanForTTS ? window.stripKoreanForTTS(text) : text;
+  // Remove emojis (TTS reads them aloud as English words)
+  ttsText = ttsText.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').trim();
   if (!ttsText || !ttsText.trim()) return;
 
   try {
