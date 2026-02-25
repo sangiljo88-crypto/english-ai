@@ -200,8 +200,9 @@ My English Coach는 OpenAI GPT API와 Web Speech API를 활용한 단일 HTML �
 ## 🗂️ 파일 구조
 
 ```
-index.html          # 단일 HTML 파일 (HTML+CSS+JS 모두 포함, ~5422줄)
-README.md           # 프로젝트 문서
+index.html                    # 단일 HTML 파일 (HTML+CSS+JS 모두 포함, ~5479줄)
+cloudflare-worker/worker.js   # Cloudflare Worker 프록시 서버 코드
+README.md                     # 프로젝트 문서
 ```
 
 ## 🔗 진입점 및 경로
@@ -225,8 +226,10 @@ README.md           # 프로젝트 문서
 - **TalkingHead 1.7**: 3D 아바타 립싱크 + 표정 애니메이션 + speakAudio() 오디오 립싱크
 - **OpenAI TTS API**: `tts-1` 모델, `nova` 음성 (아바타 립싱크용)
 - **Google Fonts**: Noto Sans KR
-- **OpenAI API**: gpt-4o-mini (사용자 API 키 필요)
-- **OpenAI Whisper API**: `whisper-1` 모델 음성 인식 (API 키 있을 때 자동 사용)
+- **OpenAI API**: gpt-4o-mini (사용자 API 키 또는 **Cloudflare Worker 프록시**)
+- **OpenAI Whisper API**: `whisper-1` 모델 음성 인식 (프록시 또는 API 키 사용)
+- **OpenAI TTS API**: `tts-1` 모델, `nova`/`onyx` 음성 (아바타 립싱크용)
+- **Cloudflare Workers**: API 키 보호용 프록시 서버 (무료 티어, 선택 사항)
 - **Web Speech API**: SpeechSynthesis (TTS) + SpeechRecognition (STT 폴백)
 - **localStorage**: 상태/데이터 영구 저장
 
@@ -242,11 +245,42 @@ README.md           # 프로젝트 문서
 ## ⚠️ 참고사항
 
 - **API 키 없이 사용 가능**: TPR, Echo, Chant, Story 등 사전 정의 콘텐츠 활동
-- **API 키 필요 활동**: Role Play, Free Talk, Mini Lesson (GPT 기반)
+- **API 키 또는 프록시 필요 활동**: Role Play, Free Talk, Mini Lesson (GPT 기반)
+- **프록시 모드**: `PROXY_BASE_URL` 설정 시 API 키 입력 없이 모든 AI 기능 자동 활성화
 - **브라우저 호환성**: Chrome/Edge 권장 (Web Speech API 지원)
 - **모바일**: iOS Safari에서 음성인식이 제한적일 수 있음
-- **STT 설정**: API 키 있으면 Whisper API (고정확도), 없으면 Web Speech API 폴백
+- **STT 설정**: 프록시/API 키 있으면 Whisper API (고정확도), 없으면 Web Speech API 폴백
 - **STT 기본 언어**: Free Talk/Voice Orb는 `ko-KR` (한국어+영어 모두 인식 가능), 학습 활동은 `en-US`
+
+## 🚀 Cloudflare Worker 프록시 배포 가이드
+
+API 키를 코드에 노출하지 않고 모든 AI 기능을 자동 활성화하려면 Cloudflare Worker를 사용합니다.
+
+### 배포 순서 (10분)
+
+1. **https://dash.cloudflare.com** 접속 → 회원가입/로그인
+2. 좌측 메뉴 **"Workers & Pages"** → **"Create"** 클릭
+3. **"Create Worker"** 선택 → 이름 입력 (예: `my-english-coach-api`)
+4. `cloudflare-worker/worker.js` 파일 내용을 에디터에 붙여넣기 → **"Deploy"** 클릭
+5. 배포 후 **"Settings"** → **"Variables and Secrets"** 이동
+6. **"Add"** 클릭:
+   - Variable name: `OPENAI_API_KEY`
+   - Value: `sk-...` (본인의 OpenAI API 키)
+   - **"Encrypt"** 체크 → Save
+7. Worker URL 복사 (예: `https://my-english-coach-api.username.workers.dev`)
+8. `index.html`에서 `PROXY_BASE_URL` 변수에 이 URL을 설정:
+   ```javascript
+   const PROXY_BASE_URL = 'https://my-english-coach-api.username.workers.dev';
+   ```
+
+### 동작 방식
+```
+[사용자 브라우저] → [Cloudflare Worker (API 키 보관)] → [OpenAI API]
+```
+- API 키는 Cloudflare 서버에만 존재 (브라우저에 노출 안 됨)
+- 무료 티어: 하루 10만 요청
+- GPT, Whisper STT, TTS 모든 엔드포인트 프록시 지원
+- CORS 자동 처리
 
 ## 🔮 향후 개발 권장사항
 

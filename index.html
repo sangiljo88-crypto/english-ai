@@ -534,8 +534,8 @@ input,textarea{font-family:inherit;outline:none;}
   <div class="onb-page" data-page="2">
     <div class="emoji">🔑</div>
     <h2>API 키 설정</h2>
-    <p>OpenAI API 키를 입력하면<br>AI 대화 기능을 사용할 수 있어요</p>
-    <div class="api-input-wrap">
+    <p id="onbApiDesc">OpenAI API 키를 입력하면<br>AI 대화 기능을 사용할 수 있어요</p>
+    <div class="api-input-wrap" id="onbApiWrap">
       <input type="password" id="apiKeyInput" placeholder="sk-... (OpenAI API Key)">
       <small>키는 브라우저에만 저장되며 외부로 전송되지 않습니다</small>
     </div>
@@ -1351,6 +1351,24 @@ let state = {
 };
 window.state = state; // 모듈 스크립트에서 접근 가능하도록 노출
 
+// ===== PROXY CONFIG =====
+// Cloudflare Worker 프록시 URL (배포 후 본인 Worker URL로 변경)
+// 빈 문자열이면 프록시 미사용 → 기존 방식(사용자 apiKey 직접 입력)
+const PROXY_BASE_URL = 'https://my-english-coach-api.jsicoffee.workers.dev';
+
+// AI 기능 사용 가능 여부 (프록시 설정됨 OR apiKey 있음)
+function isAIEnabled(){ return !!(PROXY_BASE_URL || (state && state.apiKey)); }
+window.isAIEnabled = isAIEnabled;
+
+// API 요청용 URL + 헤더 생성
+function getAPIConfig(path){
+  if(PROXY_BASE_URL){
+    return { url: PROXY_BASE_URL + path, headers: {} };
+  }
+  return { url: 'https://api.openai.com' + path, headers: { 'Authorization': 'Bearer ' + state.apiKey } };
+}
+window.getAPIConfig = getAPIConfig;
+
 // ===== INIT =====
 function init(){
   loadState();
@@ -1401,6 +1419,13 @@ let onbPage=0;
 function showOnboarding(){
   const el=document.getElementById('onboarding');
   el.classList.add('active');
+  // 프록시 설정 시 API 키 입력 안내 변경
+  if(PROXY_BASE_URL){
+    const apiDesc=document.getElementById('onbApiDesc');
+    const apiWrap=document.getElementById('onbApiWrap');
+    if(apiDesc) apiDesc.innerHTML='AI 기능이 자동으로 활성화되어 있어요!<br>별도 설정 없이 바로 사용 가능합니다 🎉';
+    if(apiWrap) apiWrap.style.display='none';
+  }
   buildOnbDots();
   updateOnbPage();
 }
@@ -1766,7 +1791,7 @@ function renderTopicArea(){
   const topicArea=document.getElementById('topicArea');
   if(!promoCard||!topicArea) return;
 
-  if(!state.apiKey){
+  if(!isAIEnabled()){
     promoCard.style.display='block';
     topicArea.style.display='none';
     return;
@@ -2324,9 +2349,10 @@ async function listenWhisper(lang='en-US', timeout=8000, prompt=''){
         if(prompt) formData.append('prompt',prompt);
         formData.append('temperature','0.0');
 
-        const resp=await fetch('https://api.openai.com/v1/audio/transcriptions',{
+        const apiCfg=getAPIConfig('/v1/audio/transcriptions');
+        const resp=await fetch(apiCfg.url,{
           method:'POST',
-          headers:{'Authorization':'Bearer '+state.apiKey},
+          headers:apiCfg.headers,
           body:formData
         });
 
@@ -2426,8 +2452,8 @@ function listenForSpeech(lang='en-US', timeout=8000, options={}){
   // Stop any ongoing TTS first
   if('speechSynthesis' in window) window.speechSynthesis.cancel();
 
-  // === Whisper 경로 (API 키 있을 때) ===
-  if(state && state.apiKey){
+  // === Whisper 경로 (프록시 또는 API 키 있을 때) ===
+  if(isAIEnabled()){
     return listenWhisper(lang, timeout, prompt);
   }
 
@@ -2532,13 +2558,14 @@ function listenForSpeech(lang='en-US', timeout=8000, options={}){
 
 // ===== OPENAI API =====
 async function callGPT(messages, maxTokens=300){
-  if(!state.apiKey){
-    return {error:true,message:'API 키가 설정되지 않았습니다. 설정에서 API 키를 입력해주세요.'};
+  if(!isAIEnabled()){
+    return {error:true,message:'AI 기능이 비활성화 상태입니다.'};
   }
   try{
-    const resp=await fetch('https://api.openai.com/v1/chat/completions',{
+    const apiCfg=getAPIConfig('/v1/chat/completions');
+    const resp=await fetch(apiCfg.url,{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+state.apiKey},
+      headers:Object.assign({'Content-Type':'application/json'},apiCfg.headers),
       body:JSON.stringify({model:'gpt-4o-mini',messages,max_tokens:maxTokens,temperature:0.7})
     });
     if(!resp.ok){
@@ -2829,7 +2856,7 @@ function runGuidedSession(){
   // === STEP 4: PRACTICE ===
   function runStep4(){
     ses.step=4;
-    if(state.level>=2 && state.apiKey){
+    if(state.level>=2 && isAIEnabled()){
       runStep4RolePlay();
     } else {
       runStep4TPR();
@@ -3124,7 +3151,7 @@ async function runTPR(){
   const lvl=Math.min(state.level, 2);
   let questions;
 
-  if(state.apiKey){
+  if(isAIEnabled()){
     body.innerHTML='<div class="session-step"><div style="font-size:48px;">⏳</div><h3>문제를 만들고 있어요...</h3>'+(state.todayTopic?`<p style="font-size:13px;color:var(--text-secondary);">주제: ${state.todayTopic.titleKo}</p>`:'')+' </div>';
     const aiContent = await generateAIContent('tpr', state.level);
     if(aiContent && Array.isArray(aiContent) && aiContent.length > 0){
@@ -3141,7 +3168,7 @@ async function runTPR(){
 
   async function showQ(){
     if(qIdx>=questions.length){
-      if(!state.apiKey){const oi=CONTENT.tpr[lvl]||CONTENT.tpr[0];markContentDone('tpr',lvl,oi,questions);}
+      if(!isAIEnabled()){const oi=CONTENT.tpr[lvl]||CONTENT.tpr[0];markContentDone('tpr',lvl,oi,questions);}
       body.innerHTML=`<div class="session-step"><div style="font-size:64px;margin-bottom:16px;">🎉</div><h3>완료!</h3><p>${correct}/${questions.length} 정답</p><button class="btn btn-primary" style="margin-top:20px;" onclick="closeActivity()">돌아가기</button></div>`;
       return;
     }
@@ -3179,7 +3206,7 @@ async function runEcho(){
   let echoOriginalItems=null;
   let echoLvlUsed=0;
 
-  if(state.apiKey){
+  if(isAIEnabled()){
     body.innerHTML='<div class="session-step"><div style="font-size:48px;">⏳</div><h3>AI가 문장을 준비하고 있어요...</h3>'+(state.todayTopic?`<p style="font-size:13px;color:var(--text-secondary);">주제: ${state.todayTopic.titleKo}</p>`:'')+' </div>';
     const aiContent = await generateAIContent('echo', state.level);
     if(aiContent && Array.isArray(aiContent) && aiContent.length > 0) words = aiContent.slice(0, 8);
@@ -3288,7 +3315,7 @@ async function runChant(){
   const body=document.getElementById('actViewBody');
   let chant;
 
-  if(state.apiKey){
+  if(isAIEnabled()){
     body.innerHTML='<div class="session-step"><div style="font-size:48px;">⏳</div><h3>챈트를 만들고 있어요...</h3></div>';
     const aiContent = await generateAIContent('chant', state.level);
     if(aiContent && aiContent.pattern && aiContent.lines) chant = aiContent;
@@ -3329,7 +3356,7 @@ async function runStory(){
   const body=document.getElementById('actViewBody');
   let story;
 
-  if(state.level >= 3 && state.apiKey){
+  if(state.level >= 3 && isAIEnabled()){
     // AI dynamic story for Lv.3+
     body.innerHTML='<div class="session-step"><div style="font-size:48px;margin-bottom:16px;">⏳</div><h3>AI가 이야기를 만들고 있어요...</h3></div>';
     const lvLabel=LEVELS[state.level].label;
@@ -3426,7 +3453,7 @@ async function runRolePlay(){
 
   let rp;
 
-  if(state.level >= 3 && state.apiKey){
+  if(state.level >= 3 && isAIEnabled()){
     // AI dynamic scenario for Lv.3+
     body.innerHTML='<div class="session-step"><div style="font-size:48px;margin-bottom:16px;">⏳</div><h3>AI가 시나리오를 준비하고 있어요...</h3></div>';
     const lvLabel=LEVELS[state.level].label;
@@ -3608,8 +3635,8 @@ function addFtActMsg(role,text){
 // ===== MINI LESSON (CLIL) =====
 async function runMiniLesson(){
   const body=document.getElementById('actViewBody');
-  if(!state.apiKey){
-    body.innerHTML=`<div class="session-step"><h3>API 키가 필요합니다</h3><p>설정에서 OpenAI API 키를 입력해주세요.</p><button class="btn btn-primary" style="margin-top:16px;" onclick="closeActivity()">돌아가기</button></div>`;
+  if(!isAIEnabled()){
+    body.innerHTML=`<div class="session-step"><h3>AI 기능 필요</h3><p>프록시 설정 또는 API 키가 필요합니다.</p><button class="btn btn-primary" style="margin-top:16px;" onclick="closeActivity()">돌아가기</button></div>`;
     return;
   }
 
@@ -4111,8 +4138,8 @@ function toggleVoiceLang(){
 }
 
 function openVoiceMode(){
-  if(!state.apiKey){
-    alert('음성 대화 모드를 사용하려면 설정에서 OpenAI API 키를 입력해주세요.');
+  if(!isAIEnabled()){
+    alert('음성 대화 모드를 사용하려면 프록시를 설정하거나 설정에서 API 키를 입력해주세요.');
     return;
   }
   const overlay=document.getElementById('voiceModeOverlay');
@@ -4363,7 +4390,7 @@ async function voiceConversationTurn(){
 
 // ===== GRAMMAR CHECK =====
 async function checkGrammar(userText){
-  if(!state.apiKey || userText.split(' ').length < 3) return null;
+  if(!isAIEnabled() || userText.split(' ').length < 3) return null;
   // Skip if text is mostly Korean
   if(/[\uAC00-\uD7AF]/.test(userText) && userText.replace(/[\uAC00-\uD7AF\s]/g,'').length < 5) return null;
 
@@ -4570,6 +4597,9 @@ function startReviewSession(){
 
 // ===== SETTINGS =====
 function openSettings(){
+  // 프록시 설정 시 API 키 필드 숨기기
+  const apiRow=document.getElementById('settingsApiKey')?.closest('.setting-item');
+  if(apiRow && PROXY_BASE_URL) apiRow.style.display='none';
   document.getElementById('settingsApiKey').value=state.apiKey;
   document.getElementById('settingsTtsSpeed').value=state.settings.ttsSpeed;
   document.getElementById('settingsLevel').value=state.level;
@@ -4761,7 +4791,7 @@ Return ONLY JSON (no markdown):
 };
 
 async function generateAIContent(activity, level) {
-  if (!state.apiKey) return null;
+  if (!isAIEnabled()) return null;
   const lvLabel = LEVELS[Math.min(level, 5)].label;
   const promptFn = AI_PROMPTS[activity];
   if (!promptFn) return null;
@@ -4897,7 +4927,7 @@ function markTopicComplete(activityId){
 
 // ===== CONVERSATION QUALITY ANALYSIS =====
 async function analyzeConversation(messages, source){
-  if(!state.apiKey || !messages || messages.length<4) return;
+  if(!isAIEnabled() || !messages || messages.length<4) return;
   const userMsgs=messages.filter(m=>m.role==='user');
   if(userMsgs.length<2) return;
 
@@ -5303,7 +5333,8 @@ window.speakWithAvatar = async function(text, lang) {
   const head = talkingHead;
   const ready = avatarReady;
 
-  if (!head || !ready || !window.state || !window.state.apiKey) {
+  const aiEnabled = window.isAIEnabled ? window.isAIEnabled() : !!(window.state && window.state.apiKey);
+  if (!head || !ready || !aiEnabled) {
     return window.speak(text, lang);
   }
 
@@ -5321,13 +5352,11 @@ window.speakWithAvatar = async function(text, lang) {
     const selected = getSelectedAvatar();
     const ttsVoice = selected.ttsVoice || 'nova';
 
-    // OpenAI TTS API로 음성 생성
-    const ttsResponse = await fetch('https://api.openai.com/v1/audio/speech', {
+    // OpenAI TTS API로 음성 생성 (프록시 경유)
+    const apiCfg = window.getAPIConfig ? window.getAPIConfig('/v1/audio/speech') : { url:'https://api.openai.com/v1/audio/speech', headers:{'Authorization':'Bearer '+window.state.apiKey} };
+    const ttsResponse = await fetch(apiCfg.url, {
       method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + window.state.apiKey,
-        'Content-Type': 'application/json'
-      },
+      headers: Object.assign({'Content-Type': 'application/json'}, apiCfg.headers),
       body: JSON.stringify({
         model: 'tts-1',
         input: ttsText,
