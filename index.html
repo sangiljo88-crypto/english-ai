@@ -482,6 +482,32 @@ input,textarea{font-family:inherit;outline:none;}
   #avatarSelector{gap:6px!important;}
   #avatarSelector > div{padding:8px!important;font-size:12px;}
 }
+
+/* === TOPIC SELECTION === */
+.topic-card{background:linear-gradient(135deg,#EEF2FF,#E0E7FF);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:var(--shadow);}
+.topic-card h3{font-size:15px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.topic-categories{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.topic-cat-btn{padding:8px 14px;border-radius:20px;font-size:12px;font-weight:600;border:2px solid #C7D2FE;background:#fff;color:var(--primary);cursor:pointer;transition:.2s;display:flex;align-items:center;gap:4px;}
+.topic-cat-btn:hover,.topic-cat-btn:active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.topic-cat-btn.selected{background:var(--primary);color:#fff;border-color:var(--primary);}
+.topic-suggestions{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.topic-suggestion{padding:14px 16px;background:#fff;border-radius:var(--radius-sm);border:2px solid #E2E8F0;cursor:pointer;transition:.2s;text-align:left;}
+.topic-suggestion:hover,.topic-suggestion:active{border-color:var(--primary);background:#F5F3FF;}
+.topic-suggestion.selected{border-color:var(--primary);background:#EEF2FF;}
+.topic-suggestion h4{font-size:14px;font-weight:700;margin-bottom:2px;}
+.topic-suggestion p{font-size:12px;color:var(--text-secondary);}
+.topic-current{display:flex;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));border-radius:var(--radius-sm);color:#fff;margin-bottom:16px;}
+.topic-current .tc-emoji{font-size:24px;}
+.topic-current .tc-info{flex:1;}
+.topic-current .tc-info h4{font-size:14px;font-weight:700;}
+.topic-current .tc-info p{font-size:11px;opacity:.8;}
+.topic-current .tc-change{padding:6px 12px;background:rgba(255,255,255,.2);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;border:none;color:#fff;}
+.topic-loading{text-align:center;padding:20px;color:var(--text-secondary);font-size:14px;}
+.api-promo-card{background:linear-gradient(135deg,#FEF3C7,#FDE68A);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow);cursor:pointer;}
+.api-promo-card h3{font-size:14px;font-weight:700;color:#92400E;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.api-promo-card p{font-size:12px;color:#78350F;line-height:1.5;}
+.api-promo-features{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.api-promo-feat{font-size:11px;padding:4px 10px;background:rgba(255,255,255,.6);border-radius:12px;color:#92400E;font-weight:600;}
 </style>
 </head>
 <body>
@@ -566,6 +592,24 @@ input,textarea{font-family:inherit;outline:none;}
     <div class="level-desc" id="growthLevelDesc">Pre-A1 · 듣고 반응하기</div>
     <div class="tree-stages" id="treeStages"></div>
   </div>
+
+  <!-- API PROMO (API 키 없을 때만 표시) -->
+  <div class="api-promo-card" id="apiPromoCard" style="display:none;" onclick="openSettings()">
+    <h3>🔑 API 키를 등록하면 무한 AI 학습!</h3>
+    <p>OpenAI API 키를 등록하면 매일 새로운 콘텐츠가 AI로 자동 생성됩니다.</p>
+    <div class="api-promo-features">
+      <span class="api-promo-feat">🎯 주제별 맞춤 학습</span>
+      <span class="api-promo-feat">📰 뉴스 기반 학습</span>
+      <span class="api-promo-feat">🤖 무한 콘텐츠 생성</span>
+      <span class="api-promo-feat">💬 AI 자유 대화</span>
+      <span class="api-promo-feat">🎭 AI 역할극</span>
+      <span class="api-promo-feat">📊 대화 품질 분석</span>
+    </div>
+  </div>
+
+  <!-- TODAY'S TOPIC (API 키 있을 때만 표시) -->
+  <div id="topicArea" style="display:none;"></div>
+
   <div class="card" onclick="startSession()">
     <div class="card-header">
       <div class="card-emoji">📚</div>
@@ -745,7 +789,7 @@ input,textarea{font-family:inherit;outline:none;}
   <div class="voice-history" id="voiceHistory"></div>
   <div class="voice-status-text" id="voiceStatusText">탭하여 대화 시작</div>
   <div class="voice-subtitle" id="voiceSubtitle">한 번 탭하면 자동으로 대화가 이어집니다</div>
-  <div id="avatarContainer" style="width:280px;height:350px;margin:0 auto 8px;border-radius:20px;overflow:hidden;background:transparent;cursor:pointer;" onclick="handleOrbTap()"></div>
+  <div id="avatarContainer" style="width:280px;height:350px;margin:0 auto 16px;border-radius:20px;overflow:hidden;background:transparent;cursor:pointer;" onclick="handleOrbTap()"></div>
   <button id="avatarTapBtn" onclick="handleOrbTap()" style="display:flex;align-items:center;justify-content:center;gap:8px;margin:0 auto 12px;padding:14px 32px;border-radius:50px;background:rgba(255,255,255,.15);color:white;font-size:15px;font-weight:700;border:2px solid rgba(255,255,255,.3);cursor:pointer;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:all .3s;-webkit-user-select:none;user-select:none;"><span style="font-size:20px;">🎤</span> 탭하여 대화 시작</button>
   <div class="voice-orb-wrapper" id="voiceOrbWrapper" role="button" tabindex="0" style="display:none;">
     <div class="voice-orb-pulse" id="voiceOrbPulse"></div>
@@ -792,19 +836,19 @@ function getBestEnglishVoice() {
   const voices = speechSynthesis.getVoices();
   if(!voices.length) return null;
   
-  // Priority: female English voices first, then any good English voice
+  // Priority: US English female voices ONLY
   const tests = [
-    // 1. Google female English (Chrome desktop/Android)
-    v => v.name.includes('Google') && v.lang.startsWith('en') && /female|UK/i.test(v.name),
-    // 2. iOS/macOS premium female voices
-    v => ['Samantha','Karen','Moira','Tessa','Fiona','Victoria','Allison','Ava','Susan'].some(n => v.name.includes(n)) && v.lang.startsWith('en'),
-    // 3. Any Google English voice
-    v => v.name.includes('Google') && v.lang.startsWith('en'),
-    // 4. Any female-sounding English voice (heuristic: avoid known male names)
-    v => v.lang.startsWith('en') && !['Daniel','Alex','Tom','James','Fred','Ralph','Aaron','Albert','Bruce','Junior'].some(n => v.name.includes(n)) && ['en-US','en-GB','en-AU'].includes(v.lang),
-    // 5. Any voice with "English" in name
-    v => v.name.includes('English') && ['en-US','en-GB'].includes(v.lang),
-    // 6. Fallback: any en-* voice
+    // 1. Google US female voice (Chrome)
+    v => v.name.includes('Google') && v.lang === 'en-US' && /female/i.test(v.name),
+    // 2. Google US English (any)
+    v => v.name.includes('Google') && v.lang === 'en-US',
+    // 3. iOS/macOS US female voices
+    v => ['Samantha','Allison','Ava','Susan','Zoe','Nicky'].some(n => v.name.includes(n)) && v.lang === 'en-US',
+    // 4. Any en-US female (avoid known male names)
+    v => v.lang === 'en-US' && !['Daniel','Alex','Tom','James','Fred','Ralph','Aaron','Albert','Bruce','Junior','David','Mark','Nathan','Evan'].some(n => v.name.includes(n)),
+    // 5. Any en-US voice at all
+    v => v.lang === 'en-US',
+    // 6. Last resort: any English
     v => v.lang.startsWith('en')
   ];
   for (const test of tests) {
@@ -816,6 +860,12 @@ function getBestEnglishVoice() {
 
 let bestVoice = null;
 speechSynthesis.onvoiceschanged = () => { bestVoice = getBestEnglishVoice(); };
+
+// ===== HTML ESCAPE (XSS 방어) =====
+function escapeHtml(str){
+  if(typeof str!=='string') return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 
 // ===== PRONUNCIATION SCORING =====
 function getSimilarity(original, spoken) {
@@ -876,67 +926,274 @@ const BADGES = [
 const CONTENT = {
   tpr: {
     0: [
+      // Body parts (10)
       {instruction:"Touch your head",options:['😀','🦶','✋','👤'],answer:0,emojis:['Head','Foot','Hand','Body'],audio:'Touch your head'},
-      {instruction:"Where is the dog?",options:['🐱','🐶','🐟','🐦'],answer:1,emojis:['Cat','Dog','Fish','Bird'],audio:'Where is the dog?'},
-      {instruction:"Show me the apple",options:['🍌','🍊','🍎','🍇'],answer:2,emojis:['Banana','Orange','Apple','Grape'],audio:'Show me the apple'},
-      {instruction:"Point to the color red",options:['🔵','🟢','🟡','🔴'],answer:3,emojis:['Blue','Green','Yellow','Red'],audio:'Point to the color red'},
-      {instruction:"Find the number three",options:['1️⃣','2️⃣','3️⃣','4️⃣'],answer:2,emojis:['One','Two','Three','Four'],audio:'Find the number three'},
       {instruction:"Touch your nose",options:['👁️','👃','👄','👂'],answer:1,emojis:['Eye','Nose','Mouth','Ear'],audio:'Touch your nose'},
+      {instruction:"Show me your hand",options:['🦶','👃','✋','👂'],answer:2,emojis:['Foot','Nose','Hand','Ear'],audio:'Show me your hand'},
+      {instruction:"Where is your ear?",options:['👁️','👄','👃','👂'],answer:3,emojis:['Eye','Mouth','Nose','Ear'],audio:'Where is your ear?'},
+      {instruction:"Point to the eye",options:['👁️','👃','👄','✋'],answer:0,emojis:['Eye','Nose','Mouth','Hand'],audio:'Point to the eye'},
+      {instruction:"Touch your mouth",options:['👂','👃','👄','👁️'],answer:2,emojis:['Ear','Nose','Mouth','Eye'],audio:'Touch your mouth'},
+      {instruction:"Show me your foot",options:['✋','🦶','👃','👂'],answer:1,emojis:['Hand','Foot','Nose','Ear'],audio:'Show me your foot'},
+      {instruction:"Where is your knee?",options:['🦵','✋','👃','🦶'],answer:0,emojis:['Knee','Hand','Nose','Foot'],audio:'Where is your knee?'},
+      {instruction:"Touch your shoulder",options:['🦶','👃','💪','🦵'],answer:2,emojis:['Foot','Nose','Shoulder','Knee'],audio:'Touch your shoulder'},
+      {instruction:"Point to your tummy",options:['✋','👃','👂','🫃'],answer:3,emojis:['Hand','Nose','Ear','Tummy'],audio:'Point to your tummy'},
+      // Animals (10)
+      {instruction:"Where is the dog?",options:['🐱','🐶','🐟','🐦'],answer:1,emojis:['Cat','Dog','Fish','Bird'],audio:'Where is the dog?'},
+      {instruction:"Point to the fish",options:['🐶','🐱','🐠','🐥'],answer:2,emojis:['Dog','Cat','Fish','Chick'],audio:'Point to the fish'},
+      {instruction:"Find the cat",options:['🐶','🐱','🐸','🐦'],answer:1,emojis:['Dog','Cat','Frog','Bird'],audio:'Find the cat'},
+      {instruction:"Where is the bird?",options:['🐟','🐛','🐶','🐦'],answer:3,emojis:['Fish','Bug','Dog','Bird'],audio:'Where is the bird?'},
+      {instruction:"Show me the rabbit",options:['🐰','🐶','🐱','🐸'],answer:0,emojis:['Rabbit','Dog','Cat','Frog'],audio:'Show me the rabbit'},
+      {instruction:"Point to the bear",options:['🐱','🐶','🐻','🐸'],answer:2,emojis:['Cat','Dog','Bear','Frog'],audio:'Point to the bear'},
+      {instruction:"Find the cow",options:['🐷','🐮','🐶','🐱'],answer:1,emojis:['Pig','Cow','Dog','Cat'],audio:'Find the cow'},
+      {instruction:"Where is the pig?",options:['🐷','🐮','🐔','🐑'],answer:0,emojis:['Pig','Cow','Chicken','Sheep'],audio:'Where is the pig?'},
+      {instruction:"Show me the horse",options:['🐶','🐱','🐸','🐴'],answer:3,emojis:['Dog','Cat','Frog','Horse'],audio:'Show me the horse'},
+      {instruction:"Find the duck",options:['🐔','🦆','🐦','🐧'],answer:1,emojis:['Chicken','Duck','Bird','Penguin'],audio:'Find the duck'},
+      // Fruits & Food (10)
+      {instruction:"Show me the apple",options:['🍌','🍊','🍎','🍇'],answer:2,emojis:['Banana','Orange','Apple','Grape'],audio:'Show me the apple'},
+      {instruction:"Where is the banana?",options:['🍎','🍌','🍊','🍇'],answer:1,emojis:['Apple','Banana','Orange','Grape'],audio:'Where is the banana?'},
+      {instruction:"Point to the orange",options:['🍎','🍌','🍊','🍉'],answer:2,emojis:['Apple','Banana','Orange','Watermelon'],audio:'Point to the orange'},
+      {instruction:"Find the grape",options:['🍎','🍌','🍊','🍇'],answer:3,emojis:['Apple','Banana','Orange','Grape'],audio:'Find the grape'},
+      {instruction:"Show me the watermelon",options:['🍉','🍓','🍎','🍌'],answer:0,emojis:['Watermelon','Strawberry','Apple','Banana'],audio:'Show me the watermelon'},
+      {instruction:"Where is the strawberry?",options:['🍌','🍓','🍎','🍊'],answer:1,emojis:['Banana','Strawberry','Apple','Orange'],audio:'Where is the strawberry?'},
+      {instruction:"Find the bread",options:['🍕','🍔','🍞','🍩'],answer:2,emojis:['Pizza','Burger','Bread','Donut'],audio:'Find the bread'},
+      {instruction:"Point to the pizza",options:['🍕','🍔','🌮','🍟'],answer:0,emojis:['Pizza','Burger','Taco','Fries'],audio:'Point to the pizza'},
+      {instruction:"Show me the milk",options:['☕','🧃','🥛','🍵'],answer:2,emojis:['Coffee','Juice','Milk','Tea'],audio:'Show me the milk'},
+      {instruction:"Where is the egg?",options:['🍞','🧀','🥚','🥛'],answer:2,emojis:['Bread','Cheese','Egg','Milk'],audio:'Where is the egg?'},
+      // Colors & Numbers (10)
+      {instruction:"Point to the color red",options:['🔵','🟢','🟡','🔴'],answer:3,emojis:['Blue','Green','Yellow','Red'],audio:'Point to the color red'},
+      {instruction:"Find the color blue",options:['🔴','🔵','🟢','🟡'],answer:1,emojis:['Red','Blue','Green','Yellow'],audio:'Find the color blue'},
+      {instruction:"Show me the color green",options:['🔴','🔵','🟢','🟡'],answer:2,emojis:['Red','Blue','Green','Yellow'],audio:'Show me the color green'},
+      {instruction:"Where is yellow?",options:['🔴','🟢','🔵','🟡'],answer:3,emojis:['Red','Green','Blue','Yellow'],audio:'Where is yellow?'},
+      {instruction:"Point to purple",options:['🟣','🔴','🔵','🟢'],answer:0,emojis:['Purple','Red','Blue','Green'],audio:'Point to purple'},
+      {instruction:"Find the number three",options:['1️⃣','2️⃣','3️⃣','4️⃣'],answer:2,emojis:['One','Two','Three','Four'],audio:'Find the number three'},
+      {instruction:"Show me five",options:['3️⃣','4️⃣','5️⃣','6️⃣'],answer:2,emojis:['Three','Four','Five','Six'],audio:'Show me five'},
+      {instruction:"Where is number one?",options:['1️⃣','2️⃣','3️⃣','4️⃣'],answer:0,emojis:['One','Two','Three','Four'],audio:'Where is number one?'},
+      {instruction:"Find number seven",options:['5️⃣','6️⃣','7️⃣','8️⃣'],answer:2,emojis:['Five','Six','Seven','Eight'],audio:'Find number seven'},
+      {instruction:"Point to ten",options:['8️⃣','9️⃣','🔟','7️⃣'],answer:2,emojis:['Eight','Nine','Ten','Seven'],audio:'Point to ten'},
+      // Nature & Weather (5)
       {instruction:"Where is the sun?",options:['🌙','⭐','☁️','☀️'],answer:3,emojis:['Moon','Star','Cloud','Sun'],audio:'Where is the sun?'},
+      {instruction:"Find the moon",options:['☀️','🌙','⭐','☁️'],answer:1,emojis:['Sun','Moon','Star','Cloud'],audio:'Find the moon'},
+      {instruction:"Show me the rain",options:['☀️','❄️','🌧️','💨'],answer:2,emojis:['Sun','Snow','Rain','Wind'],audio:'Show me the rain'},
+      {instruction:"Where is the snow?",options:['🌧️','☀️','❄️','💨'],answer:2,emojis:['Rain','Sun','Snow','Wind'],audio:'Where is the snow?'},
+      {instruction:"Point to the flower",options:['🌳','🌸','🍀','🌵'],answer:1,emojis:['Tree','Flower','Clover','Cactus'],audio:'Point to the flower'},
+      // Transport & Objects (5)
       {instruction:"Show me the car",options:['🚗','✈️','🚢','🚂'],answer:0,emojis:['Car','Plane','Ship','Train'],audio:'Show me the car'},
+      {instruction:"Where is the plane?",options:['🚗','✈️','🚢','🚂'],answer:1,emojis:['Car','Plane','Ship','Train'],audio:'Where is the plane?'},
+      {instruction:"Find the bus",options:['🚗','🚌','🚂','🏍️'],answer:1,emojis:['Car','Bus','Train','Motorcycle'],audio:'Find the bus'},
+      {instruction:"Point to the bicycle",options:['🚗','🚌','🚂','🚲'],answer:3,emojis:['Car','Bus','Train','Bicycle'],audio:'Point to the bicycle'},
+      {instruction:"Show me the ball",options:['📚','⚽','🎨','🧸'],answer:1,emojis:['Books','Ball','Paint','Teddy'],audio:'Show me the ball'},
+      // Emotions & Actions (5)
       {instruction:"Find the happy face",options:['😢','😠','😀','😴'],answer:2,emojis:['Sad','Angry','Happy','Sleepy'],audio:'Find the happy face'},
-      {instruction:"Point to the fish",options:['🐶','🐱','🐠','🐥'],answer:2,emojis:['Dog','Cat','Fish','Chick'],audio:'Point to the fish'}
+      {instruction:"Where is the sad face?",options:['😀','😢','😠','😴'],answer:1,emojis:['Happy','Sad','Angry','Sleepy'],audio:'Where is the sad face?'},
+      {instruction:"Show me sleeping",options:['😀','😢','😠','😴'],answer:3,emojis:['Happy','Sad','Angry','Sleeping'],audio:'Show me sleeping'},
+      {instruction:"Point to someone running",options:['🧘','🏃','🧍','🪑'],answer:1,emojis:['Sitting','Running','Standing','Chair'],audio:'Point to someone running'},
+      {instruction:"Find someone eating",options:['🏃','🧘','👩‍🍳','🧍'],answer:2,emojis:['Running','Yoga','Eating','Standing'],audio:'Find someone eating'}
     ],
     1: [
+      // Functional understanding (25 items)
       {instruction:"Touch something you eat with",options:['🍽️','👟','📱','🎒'],answer:0,emojis:['Plate','Shoes','Phone','Bag'],audio:'Touch something you eat with'},
       {instruction:"Where do you sleep?",options:['🪑','🛏️','🚿','🚪'],answer:1,emojis:['Chair','Bed','Shower','Door'],audio:'Where do you sleep?'},
       {instruction:"Show me something cold",options:['☀️','🔥','🍦','🏖️'],answer:2,emojis:['Sun','Fire','Ice cream','Beach'],audio:'Show me something cold'},
-      {instruction:"Find the biggest animal",options:['🐜','🐕','🐘','🐱'],answer:2,emojis:['Ant','Dog','Elephant','Cat'],audio:'Find the biggest animal'}
+      {instruction:"Find the biggest animal",options:['🐜','🐕','🐘','🐱'],answer:2,emojis:['Ant','Dog','Elephant','Cat'],audio:'Find the biggest animal'},
+      {instruction:"Which one makes music?",options:['📚','🎸','🍎','🪑'],answer:1,emojis:['Books','Guitar','Apple','Chair'],audio:'Which one makes music?'},
+      {instruction:"Point to something hot",options:['🍦','❄️','🔥','🌧️'],answer:2,emojis:['Ice cream','Snow','Fire','Rain'],audio:'Point to something hot'},
+      {instruction:"Find something you read",options:['⚽','🎸','📖','🍕'],answer:2,emojis:['Ball','Guitar','Book','Pizza'],audio:'Find something you read'},
+      {instruction:"Where do you wash your hands?",options:['🛏️','🚿','🪑','📺'],answer:1,emojis:['Bed','Sink','Chair','TV'],audio:'Where do you wash your hands?'},
+      {instruction:"Show me something round",options:['📐','⚽','📏','📦'],answer:1,emojis:['Triangle','Ball','Ruler','Box'],audio:'Show me something round'},
+      {instruction:"Which one is sweet?",options:['🍋','🌶️','🍬','🧅'],answer:2,emojis:['Lemon','Chili','Candy','Onion'],audio:'Which one is sweet?'},
+      {instruction:"Find the fastest animal",options:['🐢','🐆','🐌','🦥'],answer:1,emojis:['Turtle','Cheetah','Snail','Sloth'],audio:'Find the fastest animal'},
+      {instruction:"What do you use to cut?",options:['🥄','✂️','📎','🖊️'],answer:1,emojis:['Spoon','Scissors','Clip','Pen'],audio:'What do you use to cut?'},
+      {instruction:"Which one flies?",options:['🐶','🐱','🦅','🐟'],answer:2,emojis:['Dog','Cat','Eagle','Fish'],audio:'Which one flies?'},
+      {instruction:"Show me something soft",options:['🧱','💎','🧸','🪨'],answer:2,emojis:['Brick','Diamond','Teddy','Rock'],audio:'Show me something soft'},
+      {instruction:"Find the baby animal",options:['🐘','🐔','🐣','🐮'],answer:2,emojis:['Elephant','Chicken','Chick','Cow'],audio:'Find the baby animal'},
+      {instruction:"Where do you buy food?",options:['🏫','🏥','🏪','🏠'],answer:2,emojis:['School','Hospital','Store','Home'],audio:'Where do you buy food?'},
+      {instruction:"Point to something you drink",options:['🍞','🥤','🍕','🍩'],answer:1,emojis:['Bread','Drink','Pizza','Donut'],audio:'Point to something you drink'},
+      {instruction:"Which one is a doctor?",options:['👨‍🍳','👨‍⚕️','👨‍🏫','👨‍🚒'],answer:1,emojis:['Chef','Doctor','Teacher','Firefighter'],audio:'Which one is a doctor?'},
+      {instruction:"Find the tallest one",options:['🐕','🐱','🦒','🐇'],answer:2,emojis:['Dog','Cat','Giraffe','Rabbit'],audio:'Find the tallest one'},
+      {instruction:"Show me something you wear on your feet",options:['🎩','🧤','👟','🧣'],answer:2,emojis:['Hat','Gloves','Shoes','Scarf'],audio:'Show me something you wear on your feet'},
+      {instruction:"Which one lives in water?",options:['🐶','🐱','🐟','🐦'],answer:2,emojis:['Dog','Cat','Fish','Bird'],audio:'Which one lives in water?'},
+      {instruction:"Point to something you write with",options:['🥄','✂️','🖊️','🔑'],answer:2,emojis:['Spoon','Scissors','Pen','Key'],audio:'Point to something you write with'},
+      {instruction:"Find something you wear when it rains",options:['🕶️','☂️','🧢','🎩'],answer:1,emojis:['Sunglasses','Umbrella','Cap','Top hat'],audio:'Find something you wear when it rains'},
+      {instruction:"Where does a teacher work?",options:['🏥','🏫','🏪','🏠'],answer:1,emojis:['Hospital','School','Store','Home'],audio:'Where does a teacher work?'},
+      {instruction:"Show me something that tells time",options:['📚','⏰','🎸','🍎'],answer:1,emojis:['Books','Clock','Guitar','Apple'],audio:'Show me something that tells time'}
     ],
     2: [
+      // Conceptual / reasoning (25 items)
       {instruction:"Which one is a vegetable?",options:['🥕','🍕','📱','🚗'],answer:0,emojis:['Carrot','Pizza','Phone','Car'],audio:'Which one is a vegetable?'},
       {instruction:"Find something you wear",options:['🎸','👟','📚','🍎'],answer:1,emojis:['Guitar','Sneakers','Books','Apple'],audio:'Find something you wear'},
       {instruction:"Which is a season?",options:['🏠','🎂','❄️','📺'],answer:2,emojis:['House','Cake','Winter','TV'],audio:'Which is a season?'},
       {instruction:"Point to the musical instrument",options:['🖥️','📖','🎸','🧹'],answer:2,emojis:['Computer','Book','Guitar','Broom'],audio:'Point to the musical instrument'},
-      {instruction:"Where do you cook?",options:['🛏️','🍳','📐','🎮'],answer:1,emojis:['Bed','Kitchen','Ruler','Game'],audio:'Where do you cook?'}
+      {instruction:"Where do you cook?",options:['🛏️','🍳','📐','🎮'],answer:1,emojis:['Bed','Kitchen','Ruler','Game'],audio:'Where do you cook?'},
+      {instruction:"Which one is a country?",options:['🍕','⚽','🗽','📚'],answer:2,emojis:['Pizza','Soccer','America','Books'],audio:'Which one is a country?'},
+      {instruction:"Find the opposite of hot",options:['🔥','☀️','❄️','🌧️'],answer:2,emojis:['Fire','Sun','Cold','Rain'],audio:'Find the opposite of hot'},
+      {instruction:"Which one is a sport?",options:['📚','🎸','⚽','🍕'],answer:2,emojis:['Books','Guitar','Soccer','Pizza'],audio:'Which one is a sport?'},
+      {instruction:"Point to the heaviest one",options:['🪶','🎈','📄','🏋️'],answer:3,emojis:['Feather','Balloon','Paper','Weights'],audio:'Point to the heaviest one'},
+      {instruction:"Find what comes after Tuesday",options:['Monday','Wednesday','Thursday','Friday'],answer:0,emojis:['Monday','Wednesday','Thursday','Friday'],audio:'Find what comes after Tuesday'},
+      {instruction:"Which one is a planet?",options:['🌍','☀️','⭐','🌙'],answer:0,emojis:['Earth','Sun','Star','Moon'],audio:'Which one is a planet?'},
+      {instruction:"Show me the past tense of go",options:['Goes','Going','Went','Gone'],answer:2,emojis:['Goes','Going','Went','Gone'],audio:'Show me the past tense of go'},
+      {instruction:"Which is NOT a fruit?",options:['🍎','🥕','🍌','🍇'],answer:1,emojis:['Apple','Carrot','Banana','Grape'],audio:'Which is NOT a fruit?'},
+      {instruction:"Find the container",options:['🎸','📦','🎨','⚽'],answer:1,emojis:['Guitar','Box','Paint','Ball'],audio:'Find the container'},
+      {instruction:"Which one is a tool?",options:['🍎','🔨','🌸','🐶'],answer:1,emojis:['Apple','Hammer','Flower','Dog'],audio:'Which one is a tool?'},
+      {instruction:"Point to what you need for rain",options:['🕶️','☂️','🩱','👒'],answer:1,emojis:['Sunglasses','Umbrella','Swimsuit','Sun hat'],audio:'Point to what you need for rain'},
+      {instruction:"Find the capital city",options:['Mountain','River','Seoul','Ocean'],answer:2,emojis:['Mountain','River','Seoul','Ocean'],audio:'Find the capital city'},
+      {instruction:"Which comes first in the alphabet?",options:['D','B','C','A'],answer:3,emojis:['D','B','C','A'],audio:'Which comes first in the alphabet?'},
+      {instruction:"Show me the even number",options:['1️⃣','3️⃣','4️⃣','5️⃣'],answer:2,emojis:['One','Three','Four','Five'],audio:'Show me the even number'},
+      {instruction:"Which one has wheels?",options:['🏠','📚','🚗','🌳'],answer:2,emojis:['House','Books','Car','Tree'],audio:'Which one has wheels?'},
+      {instruction:"Find something made of glass",options:['📚','🪵','🪟','🧸'],answer:2,emojis:['Books','Wood','Window','Teddy'],audio:'Find something made of glass'},
+      {instruction:"Which is a type of weather?",options:['🎸','📚','⛈️','🍕'],answer:2,emojis:['Guitar','Books','Storm','Pizza'],audio:'Which is a type of weather?'},
+      {instruction:"Point to the herbivore",options:['🦁','🐺','🐰','🦈'],answer:2,emojis:['Lion','Wolf','Rabbit','Shark'],audio:'Point to the herbivore'},
+      {instruction:"Find what grows from a seed",options:['🪨','🌻','🧱','💎'],answer:1,emojis:['Rock','Sunflower','Brick','Diamond'],audio:'Find what grows from a seed'},
+      {instruction:"Which one is made of metal?",options:['📚','🧸','🪵','🔑'],answer:3,emojis:['Books','Teddy','Wood','Key'],audio:'Which one is made of metal?'}
     ]
   },
   echo: {
     0: [
-      {word:'Hello',korean:'안녕하세요'},{word:'Apple',korean:'사과'},{word:'Dog',korean:'개'},
-      {word:'Cat',korean:'고양이'},{word:'Water',korean:'물'},{word:'Book',korean:'책'},
-      {word:'Sun',korean:'태양'},{word:'Moon',korean:'달'},{word:'Happy',korean:'행복한'},
-      {word:'Red',korean:'빨간색'},{word:'Blue',korean:'파란색'},{word:'One',korean:'하나'},
-      {word:'Two',korean:'둘'},{word:'Three',korean:'셋'},{word:'Mom',korean:'엄마'},
-      {word:'Dad',korean:'아빠'},{word:'Head',korean:'머리'},{word:'Hand',korean:'손'},
-      {word:'Fish',korean:'물고기'},{word:'Milk',korean:'우유'},{word:'Tree',korean:'나무'},
-      {word:'Star',korean:'별'},{word:'Rain',korean:'비'},{word:'Snow',korean:'눈'},
-      {word:'Big',korean:'큰'},{word:'Small',korean:'작은'}
+      // Greetings & Social (10)
+      {word:'Hello',korean:'안녕하세요'},{word:'Goodbye',korean:'안녕히 가세요'},
+      {word:'Thank you',korean:'감사합니다'},{word:'Please',korean:'제발 / 부탁해요'},
+      {word:'Sorry',korean:'미안합니다'},{word:'Yes',korean:'네'},
+      {word:'No',korean:'아니요'},{word:'Hi',korean:'안녕'},
+      {word:'Bye',korean:'잘 가'},{word:'Friend',korean:'친구'},
+      // Family (8)
+      {word:'Mom',korean:'엄마'},{word:'Dad',korean:'아빠'},
+      {word:'Baby',korean:'아기'},{word:'Family',korean:'가족'},
+      {word:'Brother',korean:'형제'},{word:'Sister',korean:'자매'},
+      {word:'Grandma',korean:'할머니'},{word:'Grandpa',korean:'할아버지'},
+      // Body (8)
+      {word:'Head',korean:'머리'},{word:'Hand',korean:'손'},
+      {word:'Eye',korean:'눈'},{word:'Nose',korean:'코'},
+      {word:'Mouth',korean:'입'},{word:'Ear',korean:'귀'},
+      {word:'Foot',korean:'발'},{word:'Hair',korean:'머리카락'},
+      // Animals (8)
+      {word:'Dog',korean:'개'},{word:'Cat',korean:'고양이'},
+      {word:'Fish',korean:'물고기'},{word:'Bird',korean:'새'},
+      {word:'Rabbit',korean:'토끼'},{word:'Bear',korean:'곰'},
+      {word:'Duck',korean:'오리'},{word:'Horse',korean:'말'},
+      // Food & Drink (8)
+      {word:'Apple',korean:'사과'},{word:'Milk',korean:'우유'},
+      {word:'Water',korean:'물'},{word:'Bread',korean:'빵'},
+      {word:'Rice',korean:'밥'},{word:'Egg',korean:'달걀'},
+      {word:'Juice',korean:'주스'},{word:'Cake',korean:'케이크'},
+      // Nature (6)
+      {word:'Sun',korean:'태양'},{word:'Moon',korean:'달'},
+      {word:'Star',korean:'별'},{word:'Rain',korean:'비'},
+      {word:'Snow',korean:'눈(눈)'},{word:'Tree',korean:'나무'},
+      // Colors (6)
+      {word:'Red',korean:'빨간색'},{word:'Blue',korean:'파란색'},
+      {word:'Green',korean:'초록색'},{word:'Yellow',korean:'노란색'},
+      {word:'White',korean:'흰색'},{word:'Black',korean:'검은색'},
+      // Numbers (6)
+      {word:'One',korean:'하나'},{word:'Two',korean:'둘'},
+      {word:'Three',korean:'셋'},{word:'Four',korean:'넷'},
+      {word:'Five',korean:'다섯'},{word:'Ten',korean:'열'},
+      // Adjectives (5)
+      {word:'Happy',korean:'행복한'},{word:'Big',korean:'큰'},
+      {word:'Small',korean:'작은'},{word:'Good',korean:'좋은'},
+      {word:'Hot',korean:'뜨거운'},
+      // Everyday objects (5)
+      {word:'Book',korean:'책'},{word:'Pen',korean:'펜'},
+      {word:'House',korean:'집'},{word:'Car',korean:'자동차'},
+      {word:'Phone',korean:'전화'}
     ],
     1: [
+      // Basic phrases & greetings (15)
       {word:'Hello!',korean:'안녕!'},{word:'Thank you',korean:'감사합니다'},
       {word:'How are you?',korean:'어떻게 지내요?'},{word:'My name is...',korean:'제 이름은...'},
-      {word:'Good morning',korean:'좋은 아침'},{word:'Goodbye',korean:'안녕히 가세요'},
+      {word:'Good morning',korean:'좋은 아침'},{word:'Good night',korean:'잘 자요'},
+      {word:'Goodbye',korean:'안녕히 가세요'},{word:'Nice to meet you',korean:'만나서 반가워요'},
       {word:'Yes, please',korean:'네, 부탁해요'},{word:'No, thank you',korean:'아니요, 괜찮아요'},
-      {word:"I'm fine",korean:'저는 괜찮아요'},{word:'See you',korean:'또 봐요'},
+      {word:"I'm fine",korean:'저는 괜찮아요'},{word:'See you later',korean:'나중에 봐요'},
       {word:'Excuse me',korean:'실례합니다'},{word:"I'm sorry",korean:'죄송합니다'},
-      {word:'What time is it?',korean:'몇 시예요?'},{word:'I like music',korean:'나는 음악을 좋아해요'},
-      {word:"Let's try",korean:'해봐요'},{word:'Can you help me?',korean:'도와줄 수 있어요?'},
-      {word:'I understand',korean:'이해해요'},{word:'Say it again, please',korean:'다시 말해주세요'}
+      {word:'You are welcome',korean:'천만에요'},
+      // Questions & Requests (15)
+      {word:'What time is it?',korean:'몇 시예요?'},
+      {word:'How much is this?',korean:'이것 얼마예요?'},
+      {word:'Where is the bathroom?',korean:'화장실이 어디예요?'},
+      {word:'Can you help me?',korean:'도와줄 수 있어요?'},
+      {word:'Say it again, please',korean:'다시 말해주세요'},
+      {word:'What is this?',korean:'이것은 뭐예요?'},
+      {word:'Do you have this?',korean:'이것 있어요?'},
+      {word:'Can I try this?',korean:'이거 해봐도 돼요?'},
+      {word:'How do you say this?',korean:'이거 뭐라고 해요?'},
+      {word:'I need help',korean:'도움이 필요해요'},
+      // Feelings & States (10)
+      {word:'I am happy',korean:'나는 행복해요'},
+      {word:'I am tired',korean:'나는 피곤해요'},
+      {word:'I am hungry',korean:'나는 배고파요'},
+      {word:'I like music',korean:'나는 음악을 좋아해요'},
+      {word:'I like animals',korean:'나는 동물을 좋아해요'},
+      {word:"Let's try",korean:'해봐요'},
+      {word:'I understand',korean:'이해해요'},
+      {word:"I don't know",korean:'모르겠어요'},
+      {word:'I am cold',korean:'나는 추워요'},
+      {word:'I am thirsty',korean:'나는 목말라요'},
+      // Daily expressions (10)
+      {word:'Good job!',korean:'잘했어요!'},
+      {word:'One more time',korean:'한 번 더'},
+      {word:'Wait a moment',korean:'잠깐만요'},
+      {word:'Come here',korean:'이리 오세요'},
+      {word:'Sit down, please',korean:'앉으세요'},
+      {word:'Stand up',korean:'일어나세요'},
+      {word:"Let's go",korean:'가자'},
+      {word:'Be careful',korean:'조심하세요'},
+      {word:"That's right",korean:'맞아요'},
+      {word:'Try again',korean:'다시 해봐요'}
     ],
     2: [
+      // Daily routines (12)
       {word:'I wake up at seven',korean:'나는 7시에 일어나요'},
+      {word:'I brush my teeth every morning',korean:'나는 매일 아침 이를 닦아요'},
+      {word:'I take the bus to work',korean:'나는 버스를 타고 출근해요'},
+      {word:'I eat lunch at noon',korean:'나는 정오에 점심을 먹어요'},
+      {word:'I go to bed at ten',korean:'나는 10시에 잠자리에 들어요'},
+      {word:'I take a shower after exercise',korean:'나는 운동 후에 샤워해요'},
+      {word:'I study English every day',korean:'나는 매일 영어를 공부해요'},
+      {word:'I walk my dog in the park',korean:'나는 공원에서 개를 산책시켜요'},
+      {word:'I cook dinner for my family',korean:'나는 가족을 위해 저녁을 요리해요'},
+      {word:'I read before going to sleep',korean:'나는 자기 전에 책을 읽어요'},
+      {word:'I check my phone in the morning',korean:'나는 아침에 핸드폰을 확인해요'},
+      {word:'I drink coffee after breakfast',korean:'나는 아침 식사 후에 커피를 마셔요'},
+      // Likes, hobbies, descriptions (12)
       {word:'I like pizza',korean:'나는 피자를 좋아해요'},
-      {word:'Can I have water?',korean:'물 주시겠어요?'},
-      {word:'Where is the bathroom?',korean:'화장실이 어디예요?'},
       {word:"It's sunny today",korean:'오늘 날씨가 좋아요'},
       {word:'I go to school',korean:'나는 학교에 가요'},
-      {word:'I take the bus every day',korean:'나는 매일 버스를 타요'},
       {word:'What are your hobbies?',korean:'취미가 뭐예요?'},
       {word:'I have one brother',korean:'나는 형제가 한 명 있어요'},
       {word:'The weather is nice today',korean:'오늘 날씨가 좋아요'},
+      {word:'I like to listen to music',korean:'나는 음악 듣는 것을 좋아해요'},
+      {word:'My favorite color is blue',korean:'내가 좋아하는 색은 파란색이에요'},
+      {word:'I enjoy cooking on weekends',korean:'나는 주말에 요리하는 것을 즐겨요'},
+      {word:'This movie is really funny',korean:'이 영화 정말 재미있어요'},
+      {word:'I want to travel to Japan',korean:'나는 일본에 여행가고 싶어요'},
+      {word:'My sister is a teacher',korean:'내 언니/누나는 선생님이에요'},
+      // Practical situations (12)
+      {word:'Can I have water?',korean:'물 주시겠어요?'},
+      {word:'Could you speak slower?',korean:'좀 더 천천히 말해주실래요?'},
       {word:'Practice makes perfect',korean:'연습이 완벽을 만들어요'},
-      {word:'Could you speak slower?',korean:'좀 더 천천히 말해주실래요?'}
+      {word:'How do I get to the station?',korean:'역까지 어떻게 가요?'},
+      {word:'I would like a table for two',korean:'2인 테이블 부탁해요'},
+      {word:'Can I pay by card?',korean:'카드로 결제할 수 있어요?'},
+      {word:'What time does the store close?',korean:'가게 몇 시에 문 닫아요?'},
+      {word:'I have a reservation for tonight',korean:'오늘 밤 예약이 있어요'},
+      {word:'The check, please',korean:'계산서 부탁해요'},
+      {word:'Is there a pharmacy nearby?',korean:'근처에 약국이 있어요?'},
+      {word:'I need to see a doctor',korean:'의사를 만나야 해요'},
+      {word:'Can you recommend a good restaurant?',korean:'좋은 식당 추천해 주실래요?'},
+      // Opinions & feelings (14)
+      {word:'I think it will rain tomorrow',korean:'내일 비가 올 것 같아요'},
+      {word:'This coffee tastes great',korean:'이 커피 맛있어요'},
+      {word:'I feel much better now',korean:'지금 훨씬 나아요'},
+      {word:'That sounds like a good idea',korean:'좋은 생각이네요'},
+      {word:'I am looking forward to it',korean:'기대하고 있어요'},
+      {word:'I need more practice',korean:'연습이 더 필요해요'},
+      {word:'Could you say that again?',korean:'다시 한번 말해주실래요?'},
+      {word:'I am doing my best',korean:'최선을 다하고 있어요'},
+      {word:'It was really nice meeting you',korean:'만나서 정말 반가웠어요'},
+      {word:'I have been studying English for a year',korean:'영어를 1년째 공부하고 있어요'},
+      {word:'My English is getting better',korean:'제 영어가 나아지고 있어요'},
+      {word:'I try to practice every day',korean:'매일 연습하려고 노력해요'},
+      {word:'Let me think about it',korean:'생각해 볼게요'},
+      {word:'I completely agree with you',korean:'완전히 동의해요'}
     ]
   },
   chant: {
@@ -944,13 +1201,21 @@ const CONTENT = {
       {pattern:'My name is ___',lines:['My name is Kim.','My name is Lee.','My name is Park.','My name is ___!'],korean:'제 이름은 ___입니다'},
       {pattern:'I like ___',lines:['I like apples.','I like bananas.','I like oranges.','I like ___!'],korean:'나는 ___을/를 좋아해요'},
       {pattern:'I can ___',lines:['I can run.','I can jump.','I can swim.','I can ___!'],korean:'나는 ___할 수 있어요'},
-      {pattern:'Do you have ___?',lines:['Do you have a pen?','Do you have a sister?','Do you have a pet?','Do you have ___?'],korean:'___이/가 있나요?'}
+      {pattern:'Do you have ___?',lines:['Do you have a pen?','Do you have a sister?','Do you have a pet?','Do you have ___?'],korean:'___이/가 있나요?'},
+      {pattern:'I see a ___',lines:['I see a bird.','I see a cloud.','I see a tree.','I see a ___!'],korean:'___이/가 보여요'},
+      {pattern:'This is my ___',lines:['This is my book.','This is my phone.','This is my bag.','This is my ___!'],korean:'이것은 나의 ___이에요'},
+      {pattern:'I want ___',lines:['I want water.','I want pizza.','I want ice cream.','I want ___!'],korean:'___을/를 원해요'},
+      {pattern:'I have a ___',lines:['I have a cat.','I have a book.','I have a friend.','I have a ___!'],korean:'나는 ___이/가 있어요'}
     ],
     2: [
       {pattern:'I ___ every day',lines:['I eat breakfast every day.','I go to school every day.','I read books every day.','I ___ every day!'],korean:'나는 매일 ___해요'},
       {pattern:'Do you like ___?',lines:['Do you like coffee?','Do you like music?','Do you like sports?','Do you like ___?'],korean:'___을/를 좋아하나요?'},
       {pattern:'I want to ___',lines:['I want to travel.','I want to learn.','I want to play.','I want to ___!'],korean:'나는 ___하고 싶어요'},
-      {pattern:'Have you ever ___?',lines:['Have you ever traveled abroad?','Have you ever tried sushi?','Have you ever seen snow?','Have you ever ___?'],korean:'___해 본 적 있나요?'}
+      {pattern:'Have you ever ___?',lines:['Have you ever traveled abroad?','Have you ever tried sushi?','Have you ever seen snow?','Have you ever ___?'],korean:'___해 본 적 있나요?'},
+      {pattern:'I used to ___',lines:['I used to play soccer.','I used to live in Seoul.','I used to eat candy.','I used to ___!'],korean:'예전에 ___했었어요'},
+      {pattern:'If I could ___, I would ___',lines:['If I could fly, I would visit the moon.','If I could cook, I would make pasta.','If I could sing, I would join a band.','If I could ___, I would ___!'],korean:'만약 ___할 수 있다면, ___할 거예요'},
+      {pattern:'I am good at ___',lines:['I am good at cooking.','I am good at drawing.','I am good at singing.','I am good at ___!'],korean:'나는 ___을/를 잘해요'},
+      {pattern:'___ makes me happy',lines:['Music makes me happy.','Cooking makes me happy.','Reading makes me happy.','___ makes me happy!'],korean:'___은/는 나를 행복하게 해요'}
     ]
   },
   story: {
@@ -963,7 +1228,16 @@ const CONTENT = {
        korean:'톰이 일어나요. 이를 닦아요. 아침을 먹어요. 학교에 가요. 좋은 아침이야, 톰!'},
       {title:'The Lost Ball',story:"A boy has a red ball. He plays in the park. The ball goes into the water. A duck brings the ball back. The boy is so happy! He says thank you to the duck.",
        questions:[{q:"Where does the ball go?",options:['Into a tree','Into the water','Into a house'],answer:1},{q:"Who brings the ball back?",options:['A dog','A girl','A duck'],answer:2}],
-       korean:'소년에게 빨간 공이 있어요. 공원에서 놀아요. 공이 물에 빠져요. 오리가 공을 가져다줘요. 소년이 너무 기뻐요! 오리에게 고맙다고 해요.'}
+       korean:'소년에게 빨간 공이 있어요. 공원에서 놀아요. 공이 물에 빠져요. 오리가 공을 가져다줘요. 소년이 너무 기뻐요! 오리에게 고맙다고 해요.'},
+      {title:'The Rainy Day',story:"It is raining today. Mia cannot go to the park. She stays home. She draws a picture of a rainbow. The sun comes out! Mia goes outside and sees a real rainbow.",
+       questions:[{q:"Why can't Mia go to the park?",options:['She is sick','It is raining','She has homework'],answer:1},{q:"What does Mia see outside?",options:['A rainbow','A bird','A cat'],answer:0}],
+       korean:'오늘 비가 와요. 미아는 공원에 갈 수 없어요. 집에 있어요. 무지개 그림을 그려요. 해가 나와요! 미아가 밖에 나가서 진짜 무지개를 봐요.'},
+      {title:'The Kind Dog',story:"A dog finds a little bird. The bird cannot fly. The dog brings the bird home. He gives the bird water and food. The bird gets better. Now they are best friends!",
+       questions:[{q:"What does the dog find?",options:['A cat','A bird','A ball'],answer:1},{q:"What happens at the end?",options:['The bird flies away','They become friends','The dog runs away'],answer:1}],
+       korean:'개가 작은 새를 찾았어요. 새는 날 수 없어요. 개가 새를 집으로 데려왔어요. 새에게 물과 음식을 줘요. 새가 좋아져요. 이제 둘은 가장 친한 친구예요!'},
+      {title:'My Favorite Food',story:"I love pizza. I eat pizza every Friday. My mom makes the best pizza. She puts cheese, tomato, and ham on it. It is so yummy! Friday is my favorite day.",
+       questions:[{q:"When does the child eat pizza?",options:['Monday','Friday','Sunday'],answer:1},{q:"Who makes the pizza?",options:['Dad','A chef','Mom'],answer:2}],
+       korean:'나는 피자를 좋아해요. 매주 금요일에 피자를 먹어요. 엄마가 최고의 피자를 만들어요. 치즈, 토마토, 햄을 올려요. 정말 맛있어요! 금요일이 가장 좋아요.'}
     ],
     2: [
       {title:'Shopping Day',story:"Lisa goes to the store. She wants to buy apples and milk. The apples are two dollars. The milk is three dollars. She pays five dollars. She goes home and makes a smoothie.",
@@ -971,7 +1245,16 @@ const CONTENT = {
        korean:'리사가 가게에 가요. 사과와 우유를 사고 싶어요. 사과는 2달러, 우유는 3달러예요. 5달러를 내요. 집에 가서 스무디를 만들어요.'},
       {title:'The Birthday Party',story:"Today is Emma's birthday. She is seven years old. Her friends come to the party. They eat cake and play games. Emma gets a teddy bear from her best friend. It is the best birthday ever!",
        questions:[{q:"How old is Emma?",options:['Six','Seven','Eight'],answer:1},{q:"What does Emma get from her best friend?",options:['A book','A doll','A teddy bear'],answer:2}],
-       korean:'오늘은 엠마의 생일이에요. 일곱 살이에요. 친구들이 파티에 와요. 케이크를 먹고 게임을 해요. 엠마는 친한 친구에게 곰 인형을 받아요. 최고의 생일이에요!'}
+       korean:'오늘은 엠마의 생일이에요. 일곱 살이에요. 친구들이 파티에 와요. 케이크를 먹고 게임을 해요. 엠마는 친한 친구에게 곰 인형을 받아요. 최고의 생일이에요!'},
+      {title:'The School Trip',story:"Our class goes to the zoo. We see lions, monkeys, and penguins. The monkeys are very funny. They jump and play. I take many photos. It is the best school trip!",
+       questions:[{q:"Where does the class go?",options:['A museum','The zoo','A park'],answer:1},{q:"Which animals are funny?",options:['Lions','Penguins','Monkeys'],answer:2}],
+       korean:'우리 반이 동물원에 가요. 사자, 원숭이, 펭귄을 봐요. 원숭이들이 정말 재미있어요. 뛰고 놀아요. 사진을 많이 찍어요. 최고의 소풍이에요!'},
+      {title:'My New Neighbor',story:"A new family moves next door. They have a son named Jack. Jack is the same age as me. We play soccer together every afternoon. Jack is really good at soccer. I teach him Korean words, and he teaches me English. We become great friends!",
+       questions:[{q:"What sport do they play?",options:['Basketball','Soccer','Baseball'],answer:1},{q:"What does Jack teach?",options:['Korean','Math','English'],answer:2}],
+       korean:'새 가족이 옆집으로 이사 와요. 잭이라는 아들이 있어요. 잭은 나와 같은 나이예요. 매일 오후에 함께 축구를 해요. 잭은 축구를 정말 잘해요. 나는 그에게 한국어를 가르치고, 그는 나에게 영어를 가르쳐요. 우리는 좋은 친구가 돼요!'},
+      {title:'Cooking Together',story:"Today is Saturday. Mom and I cook together. We make pancakes for breakfast. First, we mix flour, eggs, and milk. Then, we cook them on the pan. The pancakes smell wonderful! Dad wakes up and says 'Mmm, delicious!' We all eat together happily.",
+       questions:[{q:"What do they make?",options:['Cookies','Pancakes','Soup'],answer:1},{q:"What day is it?",options:['Sunday','Friday','Saturday'],answer:2}],
+       korean:'오늘은 토요일이에요. 엄마와 함께 요리해요. 아침으로 팬케이크를 만들어요. 먼저 밀가루, 달걀, 우유를 섞어요. 그리고 팬에서 구워요. 팬케이크 냄새가 좋아요! 아빠가 일어나서 "음, 맛있다!" 해요. 다 같이 행복하게 먹어요.'}
     ]
   },
   roleplay: {
@@ -995,7 +1278,19 @@ const CONTENT = {
       {scenario:'호텔 체크인',emoji:'🏨',aiRole:'프론트 직원',userRole:'투숙객',
        opening:"Welcome to Grand Hotel! Do you have a reservation?",
        korean:'그랜드 호텔에 오신 것을 환영합니다! 예약하셨나요?',
-       hints:['I have a reservation under my name.','Can I have a room with a view?','What time is check-out?']}
+       hints:['I have a reservation under my name.','Can I have a room with a view?','What time is check-out?']},
+      {scenario:'쇼핑하기',emoji:'🛍️',aiRole:'점원',userRole:'쇼핑객',
+       opening:"Welcome! Are you looking for something special today?",
+       korean:'어서 오세요! 오늘 특별히 찾으시는 게 있으세요?',
+       hints:["I'm looking for a gift.","Do you have this in a different size?","Can I try this on?"]},
+      {scenario:'택시 타기',emoji:'🚕',aiRole:'택시 기사',userRole:'승객',
+       opening:"Hello! Where would you like to go?",
+       korean:'안녕하세요! 어디로 가시겠어요?',
+       hints:['To the airport, please.','How long will it take?','Can you stop here?']},
+      {scenario:'도서관 이용하기',emoji:'📚',aiRole:'사서',userRole:'방문자',
+       opening:"Good afternoon! How can I help you today?",
+       korean:'안녕하세요! 오늘 무엇을 도와드릴까요?',
+       hints:["I'm looking for a book about cooking.","Where is the reading area?","Can I borrow this book?"]}
     ]
   },
   mission: {
@@ -1014,7 +1309,7 @@ const CONTENT = {
        questions:[
          {audio:'What color is the sky?',options:['🔴 Red','🔵 Blue','🟢 Green'],answer:1},
          {audio:'How many legs does a cat have?',options:['2','4','6'],answer:1},
-         {audio:'What do you drink in the morning?',options:['🥤 Juice','☕ Coffee','🍕 Pizza'],answer:1},
+         {audio:'What do you drink in the morning?',options:['🧃 Juice','☕ Coffee','🥛 Milk'],answer:2},
          {audio:'Where do fish live?',options:['🌳 Tree','🏔️ Mountain','🌊 Water'],answer:2}
        ],type:'listen_quiz'}
     ]
@@ -1048,8 +1343,13 @@ let state = {
   conversationScores: [],
   achievements: {unlocked:[], progress:{}, dates:{}},
   dailySessions: 0, dailySessionDate: null,
-  perfectEchoCount: 0, noGrammarErrorConvCount: 0
+  perfectEchoCount: 0, noGrammarErrorConvCount: 0,
+  todayCompleted: {},  // {activity_level_index: dateString} - tracks completed content per day
+  todayTopic: null,        // {emoji, title, titleKo, description, category}
+  topicCategory: null,     // selected category
+  topicDate: null           // date string - reset daily
 };
+window.state = state; // 모듈 스크립트에서 접근 가능하도록 노출
 
 // ===== INIT =====
 function init(){
@@ -1074,6 +1374,7 @@ function loadState(){
     if(saved){
       const parsed=JSON.parse(saved);
       state={...state,...parsed};
+      window.state = state; // 모듈 참조 동기화
       // check streak
       const today=new Date().toDateString();
       if(state.lastStudyDate){
@@ -1081,13 +1382,18 @@ function loadState(){
         const diff=Math.floor((new Date(today)-last)/(1000*60*60*24));
         if(diff>1) state.streak=0;
       }
-      if(state.dailyDate!==today){state.dailyXp=0;state.dailyDate=today;}
+      if(state.dailyDate!==today){state.dailyXp=0;state.dailyDate=today;state.todayCompleted={};state._todayCompletedDate=today;}
     }
   }catch(e){console.error('Load error',e);}
 }
 
 function saveState(){
-  try{localStorage.setItem('myEnglishCoach',JSON.stringify(state));}catch(e){}
+  // 저장 전 데이터 크기 제한 (localStorage 5MB 보호)
+  if(state.studyLog && state.studyLog.length>500) state.studyLog=state.studyLog.slice(-500);
+  if(state.conversationScores && state.conversationScores.length>100) state.conversationScores=state.conversationScores.slice(-100);
+  if(state.reviewQueue && state.reviewQueue.length>200) state.reviewQueue=state.reviewQueue.slice(-200);
+  try{localStorage.setItem('myEnglishCoach',JSON.stringify(state));}
+  catch(e){console.error('localStorage save failed:',e);}
 }
 
 // ===== ONBOARDING =====
@@ -1433,6 +1739,152 @@ function renderHome(){
   } else {
     reviewCard.style.display = 'none';
   }
+
+  // === API Promo / Topic Selection ===
+  renderTopicArea();
+}
+
+// ===== TOPIC SELECTION SYSTEM =====
+const TOPIC_CATEGORIES = [
+  {id:'daily',emoji:'🏠',name:'일상생활',nameEn:'Daily Life'},
+  {id:'travel',emoji:'✈️',name:'여행',nameEn:'Travel'},
+  {id:'food',emoji:'🍽️',name:'음식/요리',nameEn:'Food & Cooking'},
+  {id:'work',emoji:'💼',name:'직장/비즈니스',nameEn:'Work & Business'},
+  {id:'hobby',emoji:'🎨',name:'취미/여가',nameEn:'Hobbies'},
+  {id:'health',emoji:'🏥',name:'건강/운동',nameEn:'Health & Fitness'},
+  {id:'culture',emoji:'🎭',name:'문화/엔터',nameEn:'Culture & Entertainment'},
+  {id:'tech',emoji:'💻',name:'기술/과학',nameEn:'Technology & Science'},
+  {id:'nature',emoji:'🌿',name:'자연/환경',nameEn:'Nature & Environment'},
+  {id:'shopping',emoji:'🛍️',name:'쇼핑',nameEn:'Shopping'},
+  {id:'school',emoji:'📚',name:'학교/교육',nameEn:'School & Education'},
+  {id:'news',emoji:'📰',name:'오늘의 뉴스',nameEn:"Today's News"},
+  {id:'random',emoji:'🎲',name:'랜덤 주제',nameEn:'Random Topic'}
+];
+
+function renderTopicArea(){
+  const promoCard=document.getElementById('apiPromoCard');
+  const topicArea=document.getElementById('topicArea');
+  if(!promoCard||!topicArea) return;
+
+  if(!state.apiKey){
+    promoCard.style.display='block';
+    topicArea.style.display='none';
+    return;
+  }
+
+  promoCard.style.display='none';
+  topicArea.style.display='block';
+
+  const today=new Date().toDateString();
+  if(state.topicDate!==today){
+    state.todayTopic=null;
+    state.topicCategory=null;
+    state.topicDate=today;
+    saveState();
+  }
+
+  if(state.todayTopic){
+    topicArea.innerHTML=`
+      <div class="topic-current">
+        <div class="tc-emoji">${state.todayTopic.emoji}</div>
+        <div class="tc-info">
+          <h4>오늘의 주제: ${state.todayTopic.titleKo}</h4>
+          <p>${state.todayTopic.title}</p>
+        </div>
+        <button class="tc-change" onclick="clearTopic()">변경</button>
+      </div>`;
+  } else {
+    topicArea.innerHTML=`
+      <div class="topic-card">
+        <h3>🎯 오늘의 학습 주제를 골라보세요</h3>
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">주제를 선택하면 AI가 맞춤 학습을 만들어 드려요!</p>
+        <div class="topic-categories" id="topicCatGrid">
+          ${TOPIC_CATEGORIES.map(c=>`<button class="topic-cat-btn" data-cat="${c.id}" onclick="selectCategory('${c.id}')">${c.emoji} ${c.name}</button>`).join('')}
+        </div>
+        <div id="topicSuggestions"></div>
+      </div>`;
+  }
+}
+
+function clearTopic(){
+  state.todayTopic=null;
+  state.topicCategory=null;
+  saveState();
+  renderTopicArea();
+}
+
+async function selectCategory(catId){
+  document.querySelectorAll('.topic-cat-btn').forEach(b=>{
+    b.classList.toggle('selected',b.dataset.cat===catId);
+  });
+
+  const sugArea=document.getElementById('topicSuggestions');
+  if(!sugArea) return;
+
+  state.topicCategory=catId;
+  const cat=TOPIC_CATEGORIES.find(c=>c.id===catId);
+
+  sugArea.innerHTML='<div class="topic-loading">⏳ AI가 주제를 추천하고 있어요...</div>';
+
+  let prompt;
+  if(catId==='news'){
+    prompt=`Suggest 3 interesting English learning topics based on common current events and trending topics in 2024-2025 (technology, culture, global events). For each topic, create a fun learning angle.
+Return ONLY JSON array (no markdown): [{"emoji":"single emoji","title":"Topic in English","titleKo":"주제 한국어","description":"Why this is fun to learn (Korean, 1 sentence)"}]`;
+  } else if(catId==='random'){
+    prompt=`Suggest 3 random, fun, and unexpected English learning topics that would be engaging and educational. Be creative! Topics can be anything: unusual jobs, weird animals, fun facts, dream scenarios, etc.
+Return ONLY JSON array (no markdown): [{"emoji":"single emoji","title":"Topic in English","titleKo":"주제 한국어","description":"Why this is fun to learn (Korean, 1 sentence)"}]`;
+  } else {
+    prompt=`Suggest 3 specific English learning topics in the category "${cat.nameEn}". Make them interesting and specific (not generic).
+Example for "Food": not just "Food" but "Street Food Around the World" or "How to Order at a Fancy Restaurant".
+Return ONLY JSON array (no markdown): [{"emoji":"single emoji","title":"Specific Topic in English","titleKo":"구체적 주제 한국어","description":"재미있는 한줄 설명 (Korean)"}]`;
+  }
+
+  const result=await callGPT([{role:'system',content:prompt}],400);
+
+  if(result.error){
+    sugArea.innerHTML=`<div class="topic-loading">주제 생성 실패. <button class="btn btn-sm btn-secondary" onclick="selectCategory('${catId}')">다시 시도</button></div>`;
+    return;
+  }
+
+  try{
+    const topics=JSON.parse(result.content.replace(/```json?\n?/g,'').replace(/```/g,'').trim());
+    if(!Array.isArray(topics)||topics.length===0) throw new Error('Invalid');
+
+    sugArea.innerHTML=`
+      <div class="topic-suggestions">
+        ${topics.map((t,i)=>`
+          <div class="topic-suggestion" onclick="chooseTopic(${i})" data-idx="${i}">
+            <h4>${t.emoji} ${t.titleKo}</h4>
+            <p>${t.title} — ${t.description}</p>
+          </div>
+        `).join('')}
+      </div>`;
+
+    window._topicSuggestions=topics.map(t=>({...t,category:catId}));
+
+  }catch(e){
+    sugArea.innerHTML=`<div class="topic-loading">응답 파싱 실패. <button class="btn btn-sm btn-secondary" onclick="selectCategory('${catId}')">다시 시도</button></div>`;
+  }
+}
+
+function chooseTopic(idx){
+  if(!window._topicSuggestions||!window._topicSuggestions[idx]) return;
+
+  document.querySelectorAll('.topic-suggestion').forEach((s,i)=>{
+    s.classList.toggle('selected',i===idx);
+  });
+
+  const topic=window._topicSuggestions[idx];
+  state.todayTopic=topic;
+  state.topicDate=new Date().toDateString();
+  saveState();
+
+  setTimeout(()=>renderTopicArea(),300);
+}
+
+function getTopicPromptSuffix(){
+  if(!state.todayTopic) return '';
+  return `\n\nIMPORTANT: Today's learning topic is "${state.todayTopic.title}" (${state.todayTopic.titleKo}). ALL content you generate must be related to this topic. Make questions, sentences, stories, and scenarios about this topic.`;
 }
 
 // ===== ACTIVITIES =====
@@ -1766,6 +2218,7 @@ function speak(text, lang='en-US'){
       if(!ttsText||!ttsText.trim()){resolve();return;}
       const u=new SpeechSynthesisUtterance(ttsText);
       u.lang=lang;
+      if(!bestVoice) bestVoice=getBestEnglishVoice(); // voices 미로드 시 폴백 재시도
       if(bestVoice && lang.startsWith('en')) u.voice=bestVoice;
       u.rate=state.settings.ttsSpeed||0.85;
       u.pitch=1.0;
@@ -2106,13 +2559,12 @@ function runGuidedSession(){
   function runStep2(){
     ses.step=2;
     const lvl=Math.min(state.level,2);
-    const items=[...(CONTENT.echo[lvl]||CONTENT.echo[0])];
-    shuffle(items);
-    const words=items.slice(0,3);
+    const originalItems=CONTENT.echo[lvl]||CONTENT.echo[0];
+    const words=smartSelect([...originalItems],'echo',lvl,3);
     let wi=0;
 
     async function showEchoWord(){
-      if(wi>=words.length){ runStep3(); return; }
+      if(wi>=words.length){ markContentDone('echo',lvl,originalItems,words); runStep3(); return; }
       const w=words[wi];
       let tries=0;const MAX=3;let best=0;let xpGiven=false;
 
@@ -2228,13 +2680,12 @@ function runGuidedSession(){
 
   function runStep4TPR(){
     const lvl=Math.min(state.level,1);
-    const items=[...(CONTENT.tpr[lvl]||CONTENT.tpr[0])];
-    shuffle(items);
-    const qs=items.slice(0,3);
+    const originalItems=CONTENT.tpr[lvl]||CONTENT.tpr[0];
+    const qs=smartSelect([...originalItems],'tpr',lvl,3);
     let qi=0;
 
     function showQ(){
-      if(qi>=qs.length){ runStep5(); return; }
+      if(qi>=qs.length){ markContentDone('tpr',lvl,originalItems,qs); runStep5(); return; }
       const q=qs[qi];
       body.innerHTML=progressHTML(4)+`
         <div class="session-step">
@@ -2484,7 +2935,10 @@ function startActivity(id){
   }
 }
 
+let activityClosing=false;
 function closeActivity(){
+  if(activityClosing) return;
+  activityClosing=true;
   document.getElementById('activityView').classList.remove('active');
   window.speechSynthesis.cancel();
   if(sessionXp>0){
@@ -2497,7 +2951,9 @@ function closeActivity(){
     state.dailySessions=(state.dailySessions||0)+1;
     saveState();
     addXp(sessionXp,ACTIVITIES.find(a=>a.id===sessionActivity)?.name||sessionActivity);
+    sessionXp=0;
   }
+  setTimeout(()=>activityClosing=false,500);
 }
 
 function updateActivityScore(){
@@ -2508,22 +2964,27 @@ function updateActivityScore(){
 async function runTPR(){
   const body=document.getElementById('actViewBody');
   const lvl=Math.min(state.level, 2);
-  const items=[...(CONTENT.tpr[lvl]||CONTENT.tpr[0])];
-  shuffle(items);
-  const questions=items.slice(0,5);
-  let qIdx=0;
-  let correct=0;
+  let questions;
+
+  if(state.apiKey){
+    body.innerHTML='<div class="session-step"><div style="font-size:48px;">⏳</div><h3>문제를 만들고 있어요...</h3>'+(state.todayTopic?`<p style="font-size:13px;color:var(--text-secondary);">주제: ${state.todayTopic.titleKo}</p>`:'')+' </div>';
+    const aiContent = await generateAIContent('tpr', state.level);
+    if(aiContent && Array.isArray(aiContent) && aiContent.length > 0){
+      questions = aiContent.slice(0, 8);
+    }
+  }
+
+  if(!questions){
+    const originalItems=CONTENT.tpr[lvl]||CONTENT.tpr[0];
+    questions=smartSelect([...originalItems],'tpr',lvl,5);
+  }
+
+  let qIdx=0, correct=0;
 
   async function showQ(){
     if(qIdx>=questions.length){
-      // Done
-      body.innerHTML=`
-        <div class="session-step">
-          <div style="font-size:64px;margin-bottom:16px;">🎉</div>
-          <h3>완료!</h3>
-          <p>${correct}/${questions.length} 정답</p>
-          <button class="btn btn-primary" style="margin-top:20px;" onclick="closeActivity()">돌아가기</button>
-        </div>`;
+      if(!state.apiKey){const oi=CONTENT.tpr[lvl]||CONTENT.tpr[0];markContentDone('tpr',lvl,oi,questions);}
+      body.innerHTML=`<div class="session-step"><div style="font-size:64px;margin-bottom:16px;">🎉</div><h3>완료!</h3><p>${correct}/${questions.length} 정답</p><button class="btn btn-primary" style="margin-top:20px;" onclick="closeActivity()">돌아가기</button></div>`;
       return;
     }
     const q=questions[qIdx];
@@ -2536,32 +2997,17 @@ async function runTPR(){
       <div class="tpr-grid" id="tprGrid">
         ${q.options.map((o,i)=>`<div class="tpr-card" data-idx="${i}"${shouldShowHint()&&i===q.answer?' style="border:2px dashed #10B981;"':''}>${o}</div>`).join('')}
       </div>`;
-
-    document.getElementById('tprPlayBtn').addEventListener('click',()=>speak(q.audio));
-    if(state.settings.autoTts) await speak(q.audio);
-
+    document.getElementById('tprPlayBtn').addEventListener('click',()=>speak(q.audio||q.instruction));
+    if(state.settings.autoTts) await speak(q.audio||q.instruction);
     body.querySelectorAll('.tpr-card').forEach(card=>{
       card.addEventListener('click',async()=>{
         const idx=parseInt(card.dataset.idx);
         body.querySelectorAll('.tpr-card').forEach(c=>c.style.pointerEvents='none');
-        if(idx===q.answer){
-          card.classList.add('correct');
-          correct++;
-          state.correctCount++;
-          sessionXp+=5;
-          updateActivityScore();
-          trackAnswer(true);
-          addSkillScore('listening',2);
-        } else {
-          card.classList.add('wrong');
-          body.querySelectorAll('.tpr-card')[q.answer].classList.add('correct');
-          trackAnswer(false);
-          addToReview('tpr', q);
-        }
+        if(idx===q.answer){card.classList.add('correct');correct++;state.correctCount++;sessionXp+=5;updateActivityScore();trackAnswer(true);addSkillScore('listening',2);}
+        else{card.classList.add('wrong');body.querySelectorAll('.tpr-card')[q.answer].classList.add('correct');trackAnswer(false);addToReview('tpr',q);}
         state.totalCount++;
         await new Promise(r=>setTimeout(r,800));
-        qIdx++;
-        showQ();
+        qIdx++;showQ();
       });
     });
   }
@@ -2572,50 +3018,34 @@ async function runTPR(){
 async function runEcho(){
   const body=document.getElementById('actViewBody');
   let words;
+  let echoOriginalItems=null;
+  let echoLvlUsed=0;
 
-  if(state.level >= 3 && state.apiKey){
-    // AI dynamic content for Lv.3+
-    body.innerHTML='<div class="session-step"><div style="font-size:48px;margin-bottom:16px;">⏳</div><h3>AI가 문장을 만들고 있어요...</h3></div>';
-    const lvLabel=LEVELS[state.level].label;
-    const aiResult=await callGPT([{role:'system',content:`Generate 6 English sentences for ${lvLabel} speaking practice. Return ONLY a JSON array: [{"word":"full sentence","korean":"한국어 번역"}]. Level guide: B1=everyday topics with compound sentences, B2=abstract topics with complex grammar, C1+=idiomatic expressions and professional language. No markdown, no code fences, just the JSON array.`}],500);
-    if(!aiResult.error){
-      try{
-        const parsed=JSON.parse(aiResult.content.replace(/```json?\n?/g,'').replace(/```/g,'').trim());
-        if(Array.isArray(parsed)&&parsed.length>0) words=parsed;
-      }catch(e){console.error('Echo AI parse error',e);}
-    }
-    if(!words){
-      // Fallback to hardcoded content
-      const items=[...(CONTENT.echo[2]||CONTENT.echo[0])];
-      shuffle(items);
-      words=items.slice(0,6);
-    }
-  } else {
-    const lvl=Math.min(state.level, 2);
-    const items=[...(CONTENT.echo[lvl]||CONTENT.echo[0])];
-    shuffle(items);
-    words=items.slice(0,6);
+  if(state.apiKey){
+    body.innerHTML='<div class="session-step"><div style="font-size:48px;">⏳</div><h3>AI가 문장을 준비하고 있어요...</h3>'+(state.todayTopic?`<p style="font-size:13px;color:var(--text-secondary);">주제: ${state.todayTopic.titleKo}</p>`:'')+' </div>';
+    const aiContent = await generateAIContent('echo', state.level);
+    if(aiContent && Array.isArray(aiContent) && aiContent.length > 0) words = aiContent.slice(0, 8);
   }
 
-  let wIdx=0;
-  let correct=0;
+  if(!words){
+    const lvl=Math.min(state.level, 2);
+    echoLvlUsed=lvl;
+    const originalItems=CONTENT.echo[lvl]||CONTENT.echo[0];
+    echoOriginalItems=originalItems;
+    words=smartSelect([...originalItems],'echo',lvl,6);
+  }
+
+  let wIdx=0, correct=0;
   const MAX_TRIES=3;
 
   async function showWord(){
     if(wIdx>=words.length){
-      body.innerHTML=`
-        <div class="session-step">
-          <div style="font-size:64px;margin-bottom:16px;">🎉</div>
-          <h3>에코 완료!</h3>
-          <p>${correct}/${words.length} 성공</p>
-          <button class="btn btn-primary" style="margin-top:20px;" onclick="closeActivity()">돌아가기</button>
-        </div>`;
+      if(echoOriginalItems) markContentDone('echo',echoLvlUsed,echoOriginalItems,words);
+      body.innerHTML=`<div class="session-step"><div style="font-size:64px;margin-bottom:16px;">🎉</div><h3>에코 완료!</h3><p>${correct}/${words.length} 성공</p><button class="btn btn-primary" style="margin-top:20px;" onclick="closeActivity()">돌아가기</button></div>`;
       return;
     }
     const w=words[wIdx];
-    let tries=0;
-    let bestScore=0;
-    let bestXpAwarded=false;
+    let tries=0, bestScore=0, bestXpAwarded=false;
 
     body.innerHTML=`
       <div style="text-align:center;width:100%;padding-top:24px;">
@@ -2633,32 +3063,19 @@ async function runEcho(){
     async function startListening(){
       if(tries>=MAX_TRIES) return;
       const statusEl=document.getElementById('echoListenStatus');
-      if(statusEl) statusEl.textContent='🔴 듣고 있어요... 따라 말해보세요!';
-
+      if(statusEl) statusEl.textContent='🎤 듣고 있어요... 말해보세요!';
       const result=await listenForSpeech('en-US',6000);
-
-      // Check if the DOM is still valid (user might have navigated away)
       if(!document.getElementById('echoScoreArea')) return;
-
       if(statusEl) statusEl.textContent='';
-      state.totalCount++;
-      tries++;
-
+      state.totalCount++; tries++;
       if(result && result.trim().length>0){
         const score=getSimilarity(w.word, result);
         renderScore(score, result);
       } else {
-        tries--; // don't count failed recognition
-        state.totalCount--;
-        document.getElementById('echoScoreArea').innerHTML='<p style="font-size:14px;color:var(--warning);margin:8px 0;font-weight:600;">🎤 음성을 인식하지 못했어요.</p>';
+        tries--; state.totalCount--;
+        document.getElementById('echoScoreArea').innerHTML='<p style="font-size:14px;color:var(--warning);font-weight:600;">🎤 음성을 인식하지 못했어요.</p>';
         document.getElementById('echoTriesLabel').textContent=`시도 ${tries} / ${MAX_TRIES}`;
-        // Auto-retry listening after a brief pause
-        setTimeout(()=>{
-          if(document.getElementById('echoScoreArea')){
-            document.getElementById('echoScoreArea').innerHTML='';
-            startListening();
-          }
-        },1500);
+        setTimeout(()=>{if(document.getElementById('echoScoreArea')){document.getElementById('echoScoreArea').innerHTML='';startListening();}},1500);
       }
     }
 
@@ -2666,9 +3083,9 @@ async function runEcho(){
       const area=document.getElementById('echoScoreArea');
       if(!area) return;
       let cls,label,xpGain;
-      if(score>=80){ cls='perfect'; label='Perfect! 🎉'; xpGain=10; }
-      else if(score>=50){ cls='good'; label='Good try! 다시 한번!'; xpGain=5; }
-      else { cls='retry'; label='천천히 따라해봐요'; xpGain=3; }
+      if(score>=80){cls='perfect';label='Perfect! 🎉';xpGain=10;}
+      else if(score>=50){cls='good';label='Good try! 다시 한번!';xpGain=5;}
+      else{cls='retry';label='천천히 따라해봐요';xpGain=3;}
 
       area.innerHTML=`
         <div class="score-circle ${cls}">${score}%</div>
@@ -2683,50 +3100,26 @@ async function runEcho(){
       const statusEl=document.getElementById('echoListenStatus');
       if(statusEl) statusEl.textContent='';
 
-      // Award XP only for best attempt
-      if(!bestXpAwarded || score>bestScore){
-        if(bestXpAwarded){
-          const oldXp=bestScore>=80?10:bestScore>=50?5:3;
-          sessionXp-=oldXp;
-        }
-        sessionXp+=xpGain;
-        bestXpAwarded=true;
-        updateActivityScore();
-      }
+      if(!bestXpAwarded||score>bestScore){if(bestXpAwarded){sessionXp-=(bestScore>=80?10:bestScore>=50?5:3);}sessionXp+=xpGain;bestXpAwarded=true;updateActivityScore();}
       if(score>bestScore) bestScore=score;
 
-      if(score>=80){ correct++; state.correctCount++; trackAnswer(true); addSkillScore('speaking',3); if(score>=95){state.perfectEchoCount=(state.perfectEchoCount||0)+1;saveState();} }
-      else if(score>=50){ addSkillScore('speaking',1); }
-      else if(score<50){ trackAnswer(false); addToReview('echo', w); }
+      if(score>=80){correct++;state.correctCount++;trackAnswer(true);addSkillScore('speaking',3);if(score>=95){state.perfectEchoCount=(state.perfectEchoCount||0)+1;saveState();}}
+      else if(score>=50){addSkillScore('speaking',1);}
+      else if(score<50){trackAnswer(false);addToReview('echo',w);}
 
-      if(score<50){ speak(w.word); }
+      if(score<50) speak(w.word);
 
       const retryBtn=document.getElementById('echoRetryBtn');
-      if(retryBtn){
-        retryBtn.addEventListener('click',async()=>{
-          area.innerHTML='';
-          // Play the word first, then auto-listen
-          await speak(w.word);
-          startListening();
-        });
-      }
+      if(retryBtn){retryBtn.addEventListener('click',async()=>{area.innerHTML='';await speak(w.word);startListening();});}
       const nextBtn=document.getElementById('echoNextBtn');
-      if(nextBtn){
-        nextBtn.addEventListener('click',()=>{ wIdx++; showWord(); });
-      }
+      if(nextBtn){nextBtn.addEventListener('click',()=>{wIdx++;showWord();});}
 
-      // Auto-advance after max tries
-      if(tries>=MAX_TRIES){
-        setTimeout(()=>{ wIdx++; showWord(); },2000);
-      }
+      if(tries>=MAX_TRIES) setTimeout(()=>{wIdx++;showWord();},2000);
 
       document.getElementById('echoTriesLabel').textContent=`시도 ${tries} / ${MAX_TRIES}`;
     }
 
-    // Auto-flow: play word → auto-listen
-    if(state.settings.autoTts){
-      await speak(w.word);
-    }
+    if(state.settings.autoTts) await speak(w.word);
     startListening();
   }
   showWord();
@@ -2735,9 +3128,20 @@ async function runEcho(){
 // ===== CHANT =====
 async function runChant(){
   const body=document.getElementById('actViewBody');
-  const lvl=Math.min(state.level,2);
-  const items=CONTENT.chant[lvl]||CONTENT.chant[1];
-  const chant=items[Math.floor(Math.random()*items.length)];
+  let chant;
+
+  if(state.apiKey){
+    body.innerHTML='<div class="session-step"><div style="font-size:48px;">⏳</div><h3>챈트를 만들고 있어요...</h3></div>';
+    const aiContent = await generateAIContent('chant', state.level);
+    if(aiContent && aiContent.pattern && aiContent.lines) chant = aiContent;
+  }
+
+  if(!chant){
+    const lvl=Math.min(state.level,2);
+    const items=CONTENT.chant[lvl]||CONTENT.chant[1];
+    if(!items||!items.length){body.innerHTML='<div class="session-step"><h3>챈트 없음</h3><button class="btn btn-primary" style="margin-top:16px;" onclick="closeActivity()">돌아가기</button></div>';return;}
+    chant=items[Math.floor(Math.random()*items.length)];
+  }
 
   body.innerHTML=`
     <div style="text-align:center;width:100%;max-width:420px;padding-top:24px;">
@@ -2794,11 +3198,11 @@ async function runStory(){
 
   body.innerHTML=`
     <div style="text-align:center;width:100%;max-width:420px;padding:24px 0;">
-      <h3 style="font-size:18px;font-weight:700;">📖 ${story.title}</h3>
+      <h3 style="font-size:18px;font-weight:700;">📖 ${escapeHtml(story.title)}</h3>
       <div style="background:#F8FAFC;border-radius:12px;padding:16px;margin:16px 0;text-align:left;line-height:1.8;font-size:15px;">
-        ${story.story}
+        ${escapeHtml(story.story)}
       </div>
-      ${state.settings.showKorean?`<div style="background:#EEF2FF;border-radius:12px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--text-secondary);text-align:left;">${story.korean}</div>`:''}
+      ${state.settings.showKorean?`<div style="background:#EEF2FF;border-radius:12px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--text-secondary);text-align:left;">${escapeHtml(story.korean)}</div>`:''}
       <button class="btn btn-secondary btn-sm" id="storyListenBtn">🔊 이야기 듣기</button>
       <div id="storyQuestions" style="margin-top:24px;"></div>
     </div>`;
@@ -2823,10 +3227,10 @@ async function runStory(){
     const q=story.questions[qIdx];
     document.getElementById('storyQuestions').innerHTML=`
       <div class="diag-question">
-        <div class="q-text" style="font-size:15px;">${q.q}</div>
+        <div class="q-text" style="font-size:15px;">${escapeHtml(q.q)}</div>
       </div>
       <div class="diag-options">
-        ${q.options.map((o,i)=>`<button class="diag-option" data-idx="${i}">${o}</button>`).join('')}
+        ${q.options.map((o,i)=>`<button class="diag-option" data-idx="${i}">${escapeHtml(o)}</button>`).join('')}
       </div>`;
     
     document.querySelectorAll('#storyQuestions .diag-option').forEach(btn=>{
@@ -2934,9 +3338,9 @@ function addRpMsg(role,text,korean){
   if(!chat) return;
   const d=document.createElement('div');
   d.className='chat-msg '+role;
-  const safe=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const safe=escapeHtml(text);
   const styled=role==='ai'?safe.replace(/(\([^)]*[\uAC00-\uD7AF][^)]*\))/g,'<span class="ko">$1</span>'):safe;
-  d.innerHTML=styled+(korean&&state.settings.showKorean?`<span class="ko">${korean}</span>`:'');
+  d.innerHTML=styled+(korean&&state.settings.showKorean?`<span class="ko">${escapeHtml(korean)}</span>`:'');
   chat.appendChild(d);
   chat.scrollTop=chat.scrollHeight;
 }
@@ -3034,7 +3438,7 @@ function addFtActMsg(role,text){
   const d=document.createElement('div');
   d.className='chat-msg '+role;
   if(role==='ai'){
-    const safe=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const safe=escapeHtml(text);
     d.innerHTML=safe.replace(/(\([^)]*[\uAC00-\uD7AF][^)]*\))/g,'<span class="ko">$1</span>');
   } else {
     d.textContent=text;
@@ -3073,17 +3477,19 @@ async function runMiniLesson(){
 
     body.innerHTML=`
       <div style="width:100%;max-width:420px;padding:16px 0;">
-        <h3 style="font-size:18px;font-weight:700;text-align:center;">🧪 ${lesson.title}</h3>
+        <h3 style="font-size:18px;font-weight:700;text-align:center;">🧪 ${escapeHtml(lesson.title)}</h3>
         <div style="margin:16px 0;">
           <h4 style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">📝 Key Vocabulary</h4>
-          ${lesson.vocab.map(v=>`<div style="padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:14px;"><strong>${v.word}</strong>: ${v.def} ${v.korean?'('+v.korean+')':''}</div>`).join('')}
+          ${lesson.vocab.map(v=>`<div style="padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:14px;"><strong>${escapeHtml(v.word)}</strong>: ${escapeHtml(v.def)} ${v.korean?'('+escapeHtml(v.korean)+')':''}</div>`).join('')}
         </div>
         <div style="background:#F8FAFC;border-radius:12px;padding:16px;margin:16px 0;line-height:1.8;font-size:14px;">
-          ${lesson.passage}
+          ${escapeHtml(lesson.passage)}
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="speak(\`${lesson.passage.replace(/`/g,"'")}\`)">🔊 듣기</button>
+        <button class="btn btn-secondary btn-sm" id="miniLessonListenBtn">🔊 듣기</button>
         <div id="miniLessonQ" style="margin-top:20px;"></div>
       </div>`;
+
+    document.getElementById('miniLessonListenBtn').addEventListener('click', () => speak(lesson.passage));
 
     function showQ(){
       if(qIdx>=lesson.questions.length){
@@ -3096,8 +3502,8 @@ async function runMiniLesson(){
       }
       const q=lesson.questions[qIdx];
       document.getElementById('miniLessonQ').innerHTML=`
-        <div class="diag-question"><div class="q-text" style="font-size:15px;">${q.q}</div></div>
-        <div class="diag-options">${q.options.map((o,i)=>`<button class="diag-option" data-idx="${i}">${o}</button>`).join('')}</div>`;
+        <div class="diag-question"><div class="q-text" style="font-size:15px;">${escapeHtml(q.q)}</div></div>
+        <div class="diag-options">${q.options.map((o,i)=>`<button class="diag-option" data-idx="${i}">${escapeHtml(o)}</button>`).join('')}</div>`;
       document.querySelectorAll('#miniLessonQ .diag-option').forEach(btn=>{
         btn.addEventListener('click',()=>{
           const idx=parseInt(btn.dataset.idx);
@@ -3184,7 +3590,7 @@ async function runEchoSprintMission(body,mission){
       const result=await listenForSpeech('en-US',4000);
       if(!document.getElementById('mResult')) return;
       document.getElementById('mListenStatus').textContent='';
-      if(result&&compareWords(w.toLowerCase(),result.toLowerCase())>0.5){
+      if(result&&getSimilarity(w,result)>=50){
         document.getElementById('mResult').className='echo-result good';
         document.getElementById('mResult').textContent='✅ 정답!';
         correct++;sessionXp+=5;updateActivityScore();
@@ -3232,10 +3638,11 @@ async function runListenQuizMission(body,mission){
     if(qIdx>=mission.questions.length){clearInterval(timer);endMission();return;}
     const q=mission.questions[qIdx];
     document.getElementById('missionContent').innerHTML=`
-      <button class="btn btn-secondary btn-sm" onclick="speak('${q.audio}')">🔊 듣기</button>
+      <button class="btn btn-secondary btn-sm" id="missionListenBtn">🔊 듣기</button>
       <div style="display:flex;gap:12px;justify-content:center;margin-top:16px;">
         ${q.options.map((o,i)=>`<div class="tpr-card" style="width:80px;height:80px;font-size:36px;" data-idx="${i}">${o}</div>`).join('')}
       </div>`;
+    document.getElementById('missionListenBtn').addEventListener('click', () => speak(q.audio));
     speak(q.audio);
     document.querySelectorAll('#missionContent .tpr-card').forEach(card=>{
       card.addEventListener('click',()=>{
@@ -3363,11 +3770,11 @@ async function runSentenceBuildMission(body,mission){
 
 // ===== FREE TALK PAGE (Tab) =====
 let ftMessages=[];
-let ftInited=false;
+let ftInitedLevel=-1;
 
 function initFreeTalk(){
-  if(ftInited) return;
-  ftInited=true;
+  if(ftInitedLevel===state.level) return;
+  ftInitedLevel=state.level;
   ftMessages=[{role:'system',content:getSystemPrompt()+'\n\nYou are having a casual conversation. Start by greeting the user warmly.'}];
   
   const chat=document.getElementById('chatMessages');
@@ -3381,7 +3788,7 @@ function addChatMsg(role,text){
   d.className='chat-msg '+role;
   if(role==='ai'){
     // Highlight Korean parenthetical translations in a subtle style
-    const safe=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const safe=escapeHtml(text);
     d.innerHTML=safe.replace(/(\([^)]*[\uAC00-\uD7AF][^)]*\))/g,'<span class="ko">$1</span>');
   } else {
     d.textContent=text;
@@ -3640,7 +4047,7 @@ function addVoiceMsg(role,text){
   const d=document.createElement('div');
   d.className='v-msg '+role;
   if(role==='ai'){
-    const safe=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const safe=escapeHtml(text);
     d.innerHTML=safe.replace(/(\([^)]*[\uAC00-\uD7AF][^)]*\))/g,'<span class="ko">$1</span>');
   } else {
     d.textContent=text;
@@ -3785,7 +4192,7 @@ function createGrammarCard(grammarResult){
   if(!grammarResult || !grammarResult.hasError) return null;
   const card=document.createElement('div');
   card.style.cssText='background:#FEF3C7;border-radius:8px;padding:8px 12px;margin:4px 0;font-size:12px;';
-  card.innerHTML=`✏️ <s>${grammarResult.original}</s> → <strong>${grammarResult.corrected}</strong><br><span style="color:var(--text-secondary);">${grammarResult.explanation}</span>`;
+  card.innerHTML=`✏️ <s>${escapeHtml(grammarResult.original)}</s> → <strong>${escapeHtml(grammarResult.corrected)}</strong><br><span style="color:var(--text-secondary);">${escapeHtml(grammarResult.explanation)}</span>`;
   return card;
 }
 
@@ -4028,34 +4435,159 @@ function shuffle(arr){
   }
 }
 
-function compareWords(a,b){
-  a=a.trim().toLowerCase();b=b.trim().toLowerCase();
-  if(a===b) return 1;
-  // Simple similarity check
-  const aWords=a.split(/\s+/);
-  const bWords=b.split(/\s+/);
-  let matches=0;
-  aWords.forEach(w=>{if(bWords.some(bw=>bw.includes(w)||w.includes(bw))) matches++;});
-  const score=matches/Math.max(aWords.length,bWords.length);
-  // Also check Levenshtein for single words
-  if(aWords.length===1&&bWords.length===1){
-    return 1-levenshtein(a,b)/Math.max(a.length,b.length);
-  }
-  return score;
+// Smart content selection: prioritize unseen content today
+function smartSelect(items, activity, level, count){
+  const today=new Date().toDateString();
+  if(!state.todayCompleted) state.todayCompleted={};
+  // Reset if date changed
+  const tcDate=state._todayCompletedDate;
+  if(tcDate!==today){state.todayCompleted={};state._todayCompletedDate=today;saveState();}
+  
+  const key=activity+'_'+level;
+  const done=state.todayCompleted[key]||[];
+  // Separate unseen vs seen
+  const unseen=items.filter((_,i)=>!done.includes(i));
+  const seen=items.filter((_,i)=>done.includes(i));
+  shuffle(unseen);
+  shuffle(seen);
+  // Prioritize unseen, fill with seen if needed
+  const result=[...unseen,...seen].slice(0,count);
+  return result;
 }
 
-function levenshtein(a,b){
-  const m=a.length,n=b.length;
-  const d=Array.from({length:m+1},()=>Array(n+1).fill(0));
-  for(let i=0;i<=m;i++) d[i][0]=i;
-  for(let j=0;j<=n;j++) d[0][j]=j;
-  for(let i=1;i<=m;i++){
-    for(let j=1;j<=n;j++){
-      const cost=a[i-1]===b[j-1]?0:1;
-      d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+cost);
+function markContentDone(activity, level, originalItems, usedItems){
+  const today=new Date().toDateString();
+  if(!state.todayCompleted) state.todayCompleted={};
+  if(state._todayCompletedDate!==today){state.todayCompleted={};state._todayCompletedDate=today;}
+  const key=activity+'_'+level;
+  if(!state.todayCompleted[key]) state.todayCompleted[key]=[];
+  usedItems.forEach(item=>{
+    const idx=originalItems.indexOf(item);
+    if(idx>=0 && !state.todayCompleted[key].includes(idx)){
+      state.todayCompleted[key].push(idx);
     }
+  });
+  saveState();
+}
+
+// ===== AI CONTENT GENERATORS =====
+const AI_PROMPTS = {
+  tpr: (lvLabel, lv) => {
+    const guide = lv === 0
+      ? 'Very simple: body parts, animals, colors, fruits, numbers. Use common single-word items. Each option must be a single emoji.'
+      : lv === 1
+      ? 'Functional: "something you eat with", "where do you sleep", "which one flies". Each option must be a single emoji.'
+      : 'Conceptual reasoning: "which is NOT a fruit", "find the opposite of hot". Options can be emoji or emoji+short word.';
+    return `Create 8 TPR (Total Physical Response) listening questions for ${lvLabel} English learners.
+Return ONLY a JSON array (no markdown, no code fences):
+[{"instruction":"English question","options":["emoji1","emoji2","emoji3","emoji4"],"answer":0,"audio":"same as instruction"}]
+Rules:
+- "answer" is 0-based index of correct option
+- Each option should be a single emoji or emoji+short word
+- ${guide}
+- Make questions diverse` + getTopicPromptSuffix();
+  },
+
+  echo: (lvLabel, lv) => {
+    const guide = lv === 0
+      ? 'Single words only: apple, dog, happy. Include Korean translation.'
+      : lv === 1
+      ? 'Short phrases: "Good morning", "I like pizza". Include Korean.'
+      : lv === 2
+      ? 'Full daily sentences: "I wake up at seven". Include Korean.'
+      : lv === 3
+      ? 'Compound sentences, everyday topics. Include Korean.'
+      : lv === 4
+      ? 'Abstract topics, complex grammar. Include Korean.'
+      : 'Idiomatic expressions, professional language. Include Korean.';
+    return `Create 8 English speaking practice items for ${lvLabel} level.
+Return ONLY a JSON array (no markdown, no code fences):
+[{"word":"English word or sentence","korean":"한국어 번역"}]
+- ${guide}` + getTopicPromptSuffix();
+  },
+
+  chant: (lvLabel, lv) => {
+    const guide = lv <= 1
+      ? 'Very simple patterns: "I like ___", "My name is ___"'
+      : 'Intermediate patterns: "I ___ every day", "Have you ever ___?"';
+    return `Create 1 English chant pattern for ${lvLabel} learners.
+Return ONLY JSON (no markdown):
+{"pattern":"Pattern with ___","lines":["Example 1.","Example 2.","Example 3.","Example 4 with ___!"],"korean":"패턴 한국어 설명"}
+- ${guide}
+- 4 example lines, last one has ___ for student to fill` + getTopicPromptSuffix();
+  },
+
+  story: (lvLabel, lv) => {
+    const guide = lv <= 1
+      ? '30-60 words, very simple, present tense. 1-2 questions.'
+      : lv === 2
+      ? '60-120 words, simple past/present. 2-3 questions.'
+      : lv === 3
+      ? '150-300 words, mixed tenses. 3 questions.'
+      : lv === 4
+      ? '300-500 words, complex grammar. 3 questions.'
+      : '500+ words, sophisticated vocabulary. 3 questions.';
+    return `Create an English reading story for ${lvLabel} level.
+Return ONLY JSON (no markdown):
+{"title":"Title","story":"Story text...","korean":"한국어 번역","questions":[{"q":"Question?","options":["A","B","C"],"answer":0}]}
+- ${guide}
+- "answer" is 0-based index` + getTopicPromptSuffix();
+  },
+
+  mission: (lvLabel, lv) => {
+    const types = ['echo_sprint', 'listen_quiz', 'sentence_build'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    if (type === 'echo_sprint') {
+      return `Create an echo sprint mission for ${lvLabel} learners.
+Return ONLY JSON (no markdown):
+{"title":"미션 제목","desc":"설명","timeLimit":30,"words":["w1","w2","w3","w4","w5"],"type":"echo_sprint"}
+- 5 words/phrases for ${lvLabel}` + getTopicPromptSuffix();
+    } else if (type === 'listen_quiz') {
+      return `Create a listening quiz for ${lvLabel} learners.
+Return ONLY JSON (no markdown):
+{"title":"미션 제목","desc":"설명","timeLimit":25,"questions":[{"audio":"question","options":["emoji text","emoji text","emoji text"],"answer":0}],"type":"listen_quiz"}
+- 3-4 questions, 3 options each, answer is 0-based` + getTopicPromptSuffix();
+    } else {
+      return `Create a sentence building mission for ${lvLabel} learners.
+Return ONLY JSON (no markdown):
+{"title":"미션 제목","desc":"설명","timeLimit":30,"words":["I","like","to","eat","pizza"],"type":"sentence_build"}
+- Words form a correct sentence in order` + getTopicPromptSuffix();
+    }
+  },
+
+  roleplay: (lvLabel, lv) => {
+    const guide = lv <= 2
+      ? 'Simple daily: cafe, store, directions, restaurant'
+      : lv === 3
+      ? 'Intermediate: job interview, doctor, apartment'
+      : lv === 4
+      ? 'Professional: meetings, negotiations, presentations'
+      : 'Advanced: complex negotiations, academic discussions';
+    return `Create a role-play scenario for ${lvLabel} practice.
+Return ONLY JSON (no markdown):
+{"scenario":"시나리오 이름","emoji":"emoji","aiRole":"AI역할","userRole":"사용자역할","opening":"AI opening in English","korean":"opening 번역","hints":["hint1","hint2","hint3"]}
+- ${guide}` + getTopicPromptSuffix();
   }
-  return d[m][n];
+};
+
+async function generateAIContent(activity, level) {
+  if (!state.apiKey) return null;
+  const lvLabel = LEVELS[Math.min(level, 5)].label;
+  const promptFn = AI_PROMPTS[activity];
+  if (!promptFn) return null;
+
+  const prompt = promptFn(lvLabel, level);
+  const result = await callGPT([{role: 'system', content: prompt}], 1500);
+
+  if (result.error) return null;
+
+  try {
+    const cleaned = result.content.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error(`AI content parse error (${activity}):`, e);
+    return null;
+  }
 }
 
 // ===== ADAPTIVE DIFFICULTY =====
@@ -4189,7 +4721,7 @@ async function analyzeConversation(messages, source){
   const result=await callGPT([{role:'system',content:'Analyze this English conversation by a Korean learner. Return ONLY JSON (no markdown, no code fences): {"fluency":1-10,"vocabulary":1-10,"grammar":1-10,"pronunciation_effort":1-10,"pragmatics":1-10,"overall":1-10,"strengths":["strength1 in Korean","strength2 in Korean"],"improvements":["improvement1 in Korean","improvement2 in Korean"],"example_correction":{"original":"user sentence with error","corrected":"corrected version","explanation":"한국어 설명"}}'},{role:'user',content:convText}],600);
 
   if(result.error){
-    card.innerHTML=`<div style="text-align:center;padding:24px;"><p>분석 실패: ${result.message}</p><button class="btn btn-primary" style="margin-top:12px;" onclick="document.getElementById('convReportOverlay').classList.remove('active')">닫기</button></div>`;
+    card.innerHTML=`<div style="text-align:center;padding:24px;"><p>분석 실패: ${escapeHtml(result.message)}</p><button class="btn btn-primary" style="margin-top:12px;" onclick="document.getElementById('convReportOverlay').classList.remove('active')">닫기</button></div>`;
     return;
   }
 
@@ -4246,19 +4778,19 @@ async function analyzeConversation(messages, source){
     }).join('')}
     <div class="conv-section">
       <h4 style="color:var(--success);">💚 잘한 점</h4>
-      ${(report.strengths||[]).map(s=>`<div class="conv-strength">${s}</div>`).join('')||'<div class="conv-strength">분석 결과 없음</div>'}
+      ${(report.strengths||[]).map(s=>`<div class="conv-strength">${escapeHtml(s)}</div>`).join('')||'<div class="conv-strength">분석 결과 없음</div>'}
     </div>
     <div class="conv-section">
       <h4 style="color:var(--warning);">💛 개선할 점</h4>
-      ${(report.improvements||[]).map(s=>`<div class="conv-improve">${s}</div>`).join('')||'<div class="conv-improve">분석 결과 없음</div>'}
+      ${(report.improvements||[]).map(s=>`<div class="conv-improve">${escapeHtml(s)}</div>`).join('')||'<div class="conv-improve">분석 결과 없음</div>'}
     </div>
     ${report.example_correction?`
     <div class="conv-section">
       <h4>✏️ 교정 예시</h4>
       <div class="conv-correction">
-        <s>${report.example_correction.original||''}</s><br>
-        → <strong>${report.example_correction.corrected||''}</strong><br>
-        <span style="color:var(--text-secondary);">${report.example_correction.explanation||''}</span>
+        <s>${escapeHtml(report.example_correction.original||'')}</s><br>
+        → <strong>${escapeHtml(report.example_correction.corrected||'')}</strong><br>
+        <span style="color:var(--text-secondary);">${escapeHtml(report.example_correction.explanation||'')}</span>
       </div>
     </div>`:''}
     <div style="text-align:center;margin-top:16px;">
@@ -4680,7 +5212,7 @@ window.selectAvatar = async function(avatarId) {
     const avatar = AVATAR_OPTIONS.find(a => a.id === avatarId);
     if (avatar) {
       try {
-        const container = document.getElementById('avatarContainer');
+        let container = document.getElementById('avatarContainer');
         if (container) {
           const loadDiv = document.createElement('div');
           loadDiv.className = 'avatar-loading';
@@ -4695,12 +5227,17 @@ window.selectAvatar = async function(avatarId) {
           lipsyncLang: 'en'
         });
 
+        // await 후 DOM이 변경됐을 수 있으므로 다시 조회
+        container = document.getElementById('avatarContainer');
         if (container) {
           const ld = container.querySelector('.avatar-loading');
           if (ld) ld.remove();
         }
       } catch(e) {
         console.error('Avatar switch error:', e);
+        // 에러 시에도 로딩 표시 제거
+        const c = document.getElementById('avatarContainer');
+        if (c) { const ld = c.querySelector('.avatar-loading'); if (ld) ld.remove(); }
       }
     }
   }
@@ -4714,8 +5251,8 @@ window.openSettings = function() {
 };
 
 // ===== GLOBAL ACCESS =====
-window.talkingHead = null;
-window.avatarReady = false;
+Object.defineProperty(window, 'talkingHead', { get: () => talkingHead, configurable: true });
+Object.defineProperty(window, 'avatarReady', { get: () => avatarReady, configurable: true });
 window.getTalkingHead = () => talkingHead;
 window.isAvatarReady = () => avatarReady;
 </script>

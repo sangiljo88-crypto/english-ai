@@ -28,12 +28,18 @@ My English Coach는 OpenAI GPT API와 Web Speech API를 활용한 단일 HTML �
 ### 📖 콘텐츠 현황
 | 활동 | Lv.0 | Lv.1 | Lv.2 | Lv.3~5 |
 |------|------|------|------|--------|
-| TPR | 10문항 | 4문항 | 5문항 | - |
-| Echo | 26단어 | 18문장 | 12문장 | **AI 동적 생성** |
-| Chant | - | 4패턴 | 4패턴 | - |
-| Story | - | 3스토리 | 2스토리 | **AI 동적 생성** |
-| Role Play | - | - | 5시나리오 | **AI 동적 생성** |
+| TPR | **55문항** | **25문항** | **25문항** | - |
+| Echo | **70단어** | **50문장** | **50문장** | **AI 동적 생성** |
+| Chant | - | **8패턴** | **8패턴** | - |
+| Story | - | **6스토리** | **5스토리** | **AI 동적 생성** |
+| Role Play | - | - | **8시나리오** | **AI 동적 생성** |
 | Mission | - | 4미션 | - | - |
+
+### 🔄 학습 완료 추적 시스템
+- **todayCompleted**: 당일 완료한 콘텐츠 인덱스를 `state.todayCompleted`에 기록
+- **smartSelect()**: 미완료 콘텐츠를 우선 제공하고, 모두 완료 시 기존 콘텐츠 재활용
+- **markContentDone()**: TPR, Echo, 진단 세션의 각 활동 완료 시 자동 기록
+- **일일 리셋**: 날짜 변경 시 `loadState()`에서 자동으로 `todayCompleted` 초기화
 
 ### 🤖 Lv.3~5 AI 동적 콘텐츠
 - **Echo (Lv.3+)**: GPT가 레벨에 맞는 영어 문장 6개를 실시간 생성 (B1=일상 복합문, B2=추상적 주제, C1+=관용표현)
@@ -51,7 +57,10 @@ My English Coach는 OpenAI GPT API와 Web Speech API를 활용한 단일 HTML �
 ### 🗣️ AI & 음성 기능
 - **OpenAI GPT-4o-mini 연동**: 레벨별 차별화된 시스템 프롬프트
 - **메아리 코칭법(Echo Coaching)**: 오류를 직접 지적하지 않고 올바른 형태로 자연스럽게 다시 말해주는 방식
-- **Web Speech API TTS**: 영어 문장 자동 읽기 (속도 조절 가능, 여성 음성 우선 선택)
+- **자연스러운 대화 프롬프트**: 친구처럼 대화하는 스타일, 이모지 금지, 축약형 사용, 레벨별 단어 수 제한 (15~80단어)
+- **자동 첨 인사**: 음성 대화 모드 진입 시 3가지 랜덤 인사 중 하나를 아바타가 자동 발화
+- **Web Speech API TTS**: 영어 문장 자동 읽기 (속도 조절 가능, **US 영어 여성 음성 우선 선택**)
+  - `getBestEnglishVoice()`: Google US Female → Google US → iOS US Female (Samantha/Ava 등) → en-US 비남성 → en-US → en-* 순서 우선 선택
   - Chrome Android `onend` 미호출 버그 대응: 안전 타임아웃 (`max(8s, 문자길이×120ms)`)
   - 빈 텍스트 가드, `speechSynthesis.resume()` 워크어라운드, 중복 resolve 방지
 - **Web Speech API STT**: 음성 인식 (한국어+영어 동시 인식, 자동 재시작)
@@ -62,6 +71,7 @@ My English Coach는 OpenAI GPT API와 Web Speech API를 활용한 단일 HTML �
   - 300ms TTS 정리 대기 후 STT 시작
 - **한국어 입력 처리**: 한국어로 말해도 GPT가 영어로 응답하고 번역 제공
 - **TTS 한글 자동 제거**: `stripKoreanForTTS()` — 화면에는 한국어 표시, TTS는 영어만 읽음
+- **TTS 이모지 자동 제거**: 유니코드 이모지 범위 정규식으로 제거 (TTS가 이모지를 영어로 읽는 문제 해결)
 - **한국어 번역 시각적 구분**: AI 메시지의 `(한국어)` 번역을 `<span class="ko">` 로 스타일링
   - `addChatMsg`, `addVoiceMsg`, `addRpMsg`, `addFtActMsg` 모두 XSS-safe innerHTML 사용
 - **오브(Orb) 애니메이션**: 듣기(빨강), 생각(노랑), 말하기(초록) 상태 시각화
@@ -142,6 +152,18 @@ My English Coach는 OpenAI GPT API와 Web Speech API를 활용한 단일 HTML �
   - `openVoiceMode` / `closeVoiceMode` 함수 확장 (기존 코드 미수정, 데코레이터 패턴)
   - 탭 비활성 시 자동 렌더링 중지 (메모리 절약)
   - 모바일 대응: 480px 이하에서 220×280px 축소
+  - **오디오 기반 립싱크**: OpenAI TTS API → `speakAudio()` 연동
+  - 단어 타임스탬프 균등 분배로 viseme 생성 → 아바타 입 모양 동기화
+  - TTS API 실패 시 기존 Web Speech API `speak()`로 자동 폴백
+  - **AI 감정 분석 표정**: `detectMoodFromText()` — 칭찬→happy, 공감→sad, 감탄→happy, 애정→love, 기본→neutral
+  - **자동 제스처**: `triggerAvatarGesture()` — 칭찬→엄지척, 인사→손 들기, 설명→검지, 동의→OK, 모름→어깨으쓱
+  - **눈맞춤 연동**: listening→`makeEyeContact(30s)`, idle→`lookAtCamera(5s)`
+  - **아바타 Mood 연동**: listening→neutral, thinking→neutral, speaking→감정분석 결과, idle→neutral
+  - **탭 버튼 상태 동기화**: 듣기(빨강)/생각(노랑)/말하기(초록) 애니메이션
+  - **아바타 선택 기능**: 설정 모달에서 Emma(여성, nova 음성) / James(남성, onyx 음성) 선택
+  - 선택한 아바타 `localStorage`에 저장, 음성 대화 모드 진입 시 자동 적용
+  - 설정에서 변경 시 즉시 아바타 교체 (로딩 표시)
+  - TTS 음성도 아바타에 맞게 자동 전환 (Emma=nova, James=onyx)
 - **설정 모달**: API 키, TTS 속도, 자동 TTS, 한국어 번역, 수동 레벨 변경, 학습 알림 시간
 - **온보딩 플로우**: 4단계 환영 화면
 - **모바일 터치 최적화**: long-press 텍스트 선택 방지, touchend/click 듀얼 이벤트 리스너
@@ -158,12 +180,13 @@ My English Coach는 OpenAI GPT API와 Web Speech API를 활용한 단일 HTML �
   - 대화 분석: `conversationScores[]` (날짜, 소스, 6개 점수, 강점/개선점)
   - 도전 과제: `achievements{unlocked[], progress{}, dates{}}`, `perfectEchoCount`, `noGrammarErrorConvCount`
   - 설정: `settings{ttsSpeed, autoTts, showKorean, reminderTime}`, `apiKey`
+  - 아바타: `localStorage.selectedAvatar` (emma/james, 별도 저장)
   - 적응형: `difficultyOffset`, `consecutiveCorrect`, `consecutiveWrong`
 
 ## 🗂️ 파일 구조
 
 ```
-index.html          # 단일 HTML 파일 (HTML+CSS+JS 모두 포함, ~4404줄)
+index.html          # 단일 HTML 파일 (HTML+CSS+JS 모두 포함, ~5263줄)
 README.md           # 프로젝트 문서
 ```
 
@@ -185,7 +208,8 @@ README.md           # 프로젝트 문서
 
 - **HTML5/CSS3/JavaScript**: 순수 바닐라, 프레임워크 없음
 - **Three.js 0.180.0**: 3D 아바타 렌더링 (CDN import map)
-- **TalkingHead 1.7**: 3D 아바타 립싱크 + 표정 애니메이션
+- **TalkingHead 1.7**: 3D 아바타 립싱크 + 표정 애니메이션 + speakAudio() 오디오 립싱크
+- **OpenAI TTS API**: `tts-1` 모델, `nova` 음성 (아바타 립싱크용)
 - **Google Fonts**: Noto Sans KR
 - **OpenAI API**: gpt-4o-mini (사용자 API 키 필요)
 - **Web Speech API**: SpeechSynthesis (TTS) + SpeechRecognition (STT)
