@@ -63,12 +63,26 @@ My English Coach는 OpenAI GPT API와 Web Speech API를 활용한 단일 HTML �
   - `getBestEnglishVoice()`: Google US Female → Google US → iOS US Female (Samantha/Ava 등) → en-US 비남성 → en-US → en-* 순서 우선 선택
   - Chrome Android `onend` 미호출 버그 대응: 안전 타임아웃 (`max(8s, 문자길이×120ms)`)
   - 빈 텍스트 가드, `speechSynthesis.resume()` 워크어라운드, 중복 resolve 방지
-- **Web Speech API STT**: 음성 인식 (한국어+영어 동시 인식, 자동 재시작)
+- **🎙️ OpenAI Whisper STT (API 키 있을 때)**: 높은 정확도의 음성 인식
+  - `listenWhisper()`: MediaRecorder로 마이크 녹음 → Whisper API (`/v1/audio/transcriptions`) 전송
+  - `prompt` 파라미터: Echo/Mission 활동에서 목표 문장을 힌트로 전달하여 인식률 극적 향상
+  - 무음 감지 (AudioContext analyser): RMS 기반 음성/무음 판별, 1.8초 무음 시 자동 녹음 종료
+  - 초기 3초간 무음이면 조기 종료 (불필요한 API 호출 방지)
+  - `echoCancellation`, `noiseSuppression` 활성화, 16kHz 샘플레이트
+  - `temperature: 0.0` 으로 최소 변동성 설정
+  - WebM/Opus 우선, MP4 폴백 (브라우저 호환성)
+  - 마이크 권한 거부/미발견 등 상세 에러 처리
+- **Web Speech API STT (API 키 없을 때 폴백)**: 음성 인식 (한국어+영어 동시 인식, 자동 재시작)
+  - `interimResults` 지원: `onInterim` 콜백으로 실시간 중간 결과 표시
   - 최대 4회 자동 재시작, 250ms 재시도 간격
   - `mainTimer = timeout + 500ms` 로 마지막 재시작 보호
   - 남은 시간 < 500ms 시 새 녹음 시작하지 않음
   - abort() 후 콜백 null 처리로 유령 이벤트 방지
   - 300ms TTS 정리 대기 후 STT 시작
+- **통합 `listenForSpeech(lang, timeout, options)`**: Whisper/WebSpeech 자동 전환
+  - `options.prompt`: Whisper에 전달할 힌트 텍스트 (Echo: 목표 단어/문장)
+  - `options.onInterim`: Web Speech 폴백 시 중간 결과 콜백
+  - Voice Mode/Free Talk: `onInterim`으로 실시간 음성 트랜스크립트 표시
 - **한국어 입력 처리**: 한국어로 말해도 GPT가 영어로 응답하고 번역 제공
 - **TTS 한글 자동 제거**: `stripKoreanForTTS()` — 화면에는 한국어 표시, TTS는 영어만 읽음
 - **TTS 이모지 자동 제거**: 유니코드 이모지 범위 정규식으로 제거 (TTS가 이모지를 영어로 읽는 문제 해결)
@@ -186,7 +200,7 @@ My English Coach는 OpenAI GPT API와 Web Speech API를 활용한 단일 HTML �
 ## 🗂️ 파일 구조
 
 ```
-index.html          # 단일 HTML 파일 (HTML+CSS+JS 모두 포함, ~5263줄)
+index.html          # 단일 HTML 파일 (HTML+CSS+JS 모두 포함, ~5422줄)
 README.md           # 프로젝트 문서
 ```
 
@@ -212,7 +226,8 @@ README.md           # 프로젝트 문서
 - **OpenAI TTS API**: `tts-1` 모델, `nova` 음성 (아바타 립싱크용)
 - **Google Fonts**: Noto Sans KR
 - **OpenAI API**: gpt-4o-mini (사용자 API 키 필요)
-- **Web Speech API**: SpeechSynthesis (TTS) + SpeechRecognition (STT)
+- **OpenAI Whisper API**: `whisper-1` 모델 음성 인식 (API 키 있을 때 자동 사용)
+- **Web Speech API**: SpeechSynthesis (TTS) + SpeechRecognition (STT 폴백)
 - **localStorage**: 상태/데이터 영구 저장
 
 ## 📖 사용 방법
@@ -230,7 +245,8 @@ README.md           # 프로젝트 문서
 - **API 키 필요 활동**: Role Play, Free Talk, Mini Lesson (GPT 기반)
 - **브라우저 호환성**: Chrome/Edge 권장 (Web Speech API 지원)
 - **모바일**: iOS Safari에서 음성인식이 제한적일 수 있음
-- **STT 기본 설정**: Free Talk/Voice Orb는 `ko-KR` (한국어+영어 모두 인식 가능)
+- **STT 설정**: API 키 있으면 Whisper API (고정확도), 없으면 Web Speech API 폴백
+- **STT 기본 언어**: Free Talk/Voice Orb는 `ko-KR` (한국어+영어 모두 인식 가능), 학습 활동은 `en-US`
 
 ## 🔮 향후 개발 권장사항
 

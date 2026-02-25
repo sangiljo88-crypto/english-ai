@@ -2239,27 +2239,200 @@ function speak(text, lang='en-US'){
 let recognition=null;
 let recognitionResolve=null;
 
-function initRecognition(lang='en-US'){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR) return null;
-  recognition=new SR();
-  recognition.lang=lang;
-  recognition.continuous=false;
-  recognition.interimResults=false;
-  recognition.maxAlternatives=3;
-  return recognition;
-}
+// ===== WHISPER STT (OpenAI) =====
+// MediaRecorder로 마이크 녹음 → Whisper API로 전송
+// options: { lang, timeout, prompt, onInterim }
+let _whisperStream=null; // 현재 활성 MediaStream (정리용)
 
-function listenForSpeech(lang='en-US',timeout=8000){
+async function listenWhisper(lang='en-US', timeout=8000, prompt=''){
+  // Stop any ongoing TTS
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+  let stream=null;
+  let mediaRecorder=null;
+  let audioChunks=[];
+  let silenceTimer=null;
+  let mainTimer=null;
+  let done=false;
+  let analyser=null;
+  let animFrame=null;
+
+  const whisperLang = lang.startsWith('ko') ? 'ko' : 'en';
+
+  const cleanup=()=>{
+    done=true;
+    if(animFrame) cancelAnimationFrame(animFrame);
+    if(silenceTimer) clearTimeout(silenceTimer);
+    if(mainTimer) clearTimeout(mainTimer);
+    try{if(mediaRecorder && mediaRecorder.state!=='inactive') mediaRecorder.stop();}catch(e){}
+    try{if(stream){stream.getTracks().forEach(t=>t.stop());}}catch(e){}
+    _whisperStream=null;
+  };
+
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,sampleRate:16000}});
+    _whisperStream=stream;
+  }catch(e){
+    if(e.name==='NotAllowedError'||e.name==='PermissionDeniedError'){
+      showSttWarning('🎤 마이크 권한이 거부되었습니다. 브라우저 설정에서 마이크 접근을 허용해주세요.');
+    } else if(e.name==='NotFoundError'){
+      showSttWarning('🎤 마이크를 찾을 수 없습니다. 마이크가 연결되어 있는지 확인해주세요.');
+    } else {
+      showSttWarning('🎤 마이크 접근 오류: '+e.message);
+    }
+    return '';
+  }
+
   return new Promise((resolve)=>{
-    // Stop any ongoing TTS first to prevent conflicts
-    if('speechSynthesis' in window){
-      window.speechSynthesis.cancel();
+    const mimeType=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':
+                   MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':
+                   MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':'';
+
+    if(!mimeType){
+      showSttWarning('⚠️ 이 브라우저는 오디오 녹음을 지원하지 않습니다.');
+      cleanup(); resolve(''); return;
     }
 
+    mediaRecorder=new MediaRecorder(stream,{mimeType});
+    audioChunks=[];
+
+    mediaRecorder.ondataavailable=(e)=>{
+      if(e.data&&e.data.size>0) audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop=async()=>{
+      if(done&&audioChunks.length===0){resolve('');return;}
+      done=true;
+      if(mainTimer) clearTimeout(mainTimer);
+      if(silenceTimer) clearTimeout(silenceTimer);
+      if(animFrame) cancelAnimationFrame(animFrame);
+      try{stream.getTracks().forEach(t=>t.stop());}catch(e){}
+      _whisperStream=null;
+
+      if(audioChunks.length===0){resolve('');return;}
+
+      const blob=new Blob(audioChunks,{type:mimeType});
+      // 너무 짧은 녹음 무시 (0.3초 미만 ≈ 작은 사이즈)
+      if(blob.size<3000){resolve('');return;}
+
+      try{
+        const ext=mimeType.includes('mp4')?'mp4':'webm';
+        const formData=new FormData();
+        formData.append('file',blob,'audio.'+ext);
+        formData.append('model','whisper-1');
+        formData.append('language',whisperLang);
+        if(prompt) formData.append('prompt',prompt);
+        formData.append('temperature','0.0');
+
+        const resp=await fetch('https://api.openai.com/v1/audio/transcriptions',{
+          method:'POST',
+          headers:{'Authorization':'Bearer '+state.apiKey},
+          body:formData
+        });
+
+        if(!resp.ok){
+          const errText=await resp.text().catch(()=>'');
+          console.warn('Whisper API error:',resp.status,errText);
+          resolve('');return;
+        }
+
+        const data=await resp.json();
+        const text=(data.text||'').trim();
+        resolve(text);
+      }catch(err){
+        console.warn('Whisper transcription error:',err);
+        resolve('');
+      }
+    };
+
+    // === 무음 감지: AudioContext analyser ===
+    let audioCtx=null;
+    try{
+      audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+      const source=audioCtx.createMediaStreamSource(stream);
+      analyser=audioCtx.createAnalyser();
+      analyser.fftSize=512;
+      source.connect(analyser);
+      const dataArr=new Uint8Array(analyser.frequencyBinCount);
+
+      let speechDetected=false;
+      let silenceStart=0;
+      const SILENCE_THRESHOLD=15; // RMS threshold
+      const SILENCE_DURATION=1800; // 1.8초 무음이면 녹음 종료
+      const INITIAL_SILENCE=3000; // 처음 3초간 아무 소리 없으면 종료
+
+      function checkAudio(){
+        if(done) return;
+        analyser.getByteTimeDomainData(dataArr);
+        let sum=0;
+        for(let i=0;i<dataArr.length;i++){
+          const v=dataArr[i]-128;
+          sum+=v*v;
+        }
+        const rms=Math.sqrt(sum/dataArr.length);
+
+        if(rms>SILENCE_THRESHOLD){
+          speechDetected=true;
+          silenceStart=0;
+        } else {
+          if(!silenceStart) silenceStart=Date.now();
+          // 음성이 감지된 후 무음이 지속되면 → 녹음 종료
+          if(speechDetected && (Date.now()-silenceStart)>SILENCE_DURATION){
+            try{mediaRecorder.stop();}catch(e){}
+            return;
+          }
+          // 처음부터 아무 소리 없으면
+          if(!speechDetected && (Date.now()-silenceStart)>INITIAL_SILENCE){
+            try{mediaRecorder.stop();}catch(e){}
+            return;
+          }
+        }
+        animFrame=requestAnimationFrame(checkAudio);
+      }
+      silenceStart=Date.now();
+      checkAudio();
+    }catch(e){
+      // AudioContext 실패 시 무음 감지 없이 타임아웃으로만 처리
+      console.log('AudioContext not available for silence detection');
+    }
+
+    // 최대 녹음 시간
+    mainTimer=setTimeout(()=>{
+      if(!done){
+        try{mediaRecorder.stop();}catch(e){}
+      }
+    },timeout);
+
+    // 녹음 시작 (100ms 간격으로 데이터 수집)
+    try{
+      mediaRecorder.start(100);
+    }catch(e){
+      cleanup();resolve('');
+    }
+  });
+}
+
+// ===== UNIFIED listenForSpeech =====
+// API 키 있으면 Whisper, 없으면 Web Speech API 폴백
+// options 3번째 파라미터: {prompt, onInterim} or string(prompt)
+function listenForSpeech(lang='en-US', timeout=8000, options={}){
+  // options가 문자열이면 prompt로 처리
+  if(typeof options==='string') options={prompt:options};
+  const prompt=options.prompt||'';
+  const onInterim=options.onInterim||null;
+
+  // Stop any ongoing TTS first
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+  // === Whisper 경로 (API 키 있을 때) ===
+  if(state && state.apiKey){
+    return listenWhisper(lang, timeout, prompt);
+  }
+
+  // === Web Speech API 폴백 (API 키 없을 때) ===
+  return new Promise((resolve)=>{
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
     if(!SR){
-      // SpeechRecognition not supported — notify user
       if(location.protocol!=='https:' && location.hostname!=='localhost'){
         showSttWarning('⚠️ 음성 인식은 HTTPS 환경에서만 사용 가능합니다. 배포 후 다시 시도해주세요.');
       } else {
@@ -2297,16 +2470,21 @@ function listenForSpeech(lang='en-US',timeout=8000){
         currentRec=rec;
         rec.lang=lang;
         rec.continuous=false;
-        rec.interimResults=false;
+        rec.interimResults=!!onInterim; // 콜백 있으면 중간 결과 활성화
         rec.maxAlternatives=3;
 
         rec.onresult=(e)=>{
           if(done) return;
           try{
-            const text=e.results[0][0].transcript;
-            if(text && text.trim()){
-              bestResult=text.trim();
-              finish(bestResult);
+            const r=e.results[0];
+            const text=r[0].transcript;
+            if(r.isFinal){
+              if(text && text.trim()){
+                bestResult=text.trim();
+                finish(bestResult);
+              }
+            } else if(onInterim && text){
+              onInterim(text.trim());
             }
           }catch(err){}
         };
@@ -2315,59 +2493,37 @@ function listenForSpeech(lang='en-US',timeout=8000){
           if(done) return;
           if(e.error==='not-allowed' || e.error==='service-not-allowed'){
             showSttWarning('🎤 마이크 권한이 거부되었습니다. 브라우저 설정에서 마이크 접근을 허용해주세요.');
-            finish('');
-            return;
+            finish('');return;
           }
           if(e.error==='audio-capture'){
             showSttWarning('🎤 마이크를 찾을 수 없습니다. 마이크가 연결되어 있는지 확인해주세요.');
-            finish('');
-            return;
+            finish('');return;
           }
           if(e.error==='network'){
-            // Network error: retry once, then give up
-            if(restartCount < 1){
-              restartCount++;
-              // don't show warning on first try, let retry attempt
-            } else {
-              showSttWarning('🌐 음성 인식 서버에 연결할 수 없습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
-              finish('');
-              return;
-            }
+            if(restartCount < 1){ restartCount++; }
+            else { showSttWarning('🌐 음성 인식 서버에 연결할 수 없습니다.'); finish(''); return; }
           }
-          // For 'no-speech', 'aborted' - let onend restart
         };
 
         rec.onend=()=>{
           if(done) return;
           if(bestResult){ finish(bestResult); return; }
-          // Restart if time remains
           const el=Date.now()-startTime;
           if(el < timeout-800 && restartCount<MAX_RESTARTS){
             restartCount++;
             setTimeout(()=>startRec(), 250);
           }
-          // Don't finish('') here - let mainTimer handle final timeout
         };
 
         rec.start();
       }catch(e){
         if(done) return;
-        // Retry once after delay
-        if(restartCount<MAX_RESTARTS){
-          restartCount++;
-          setTimeout(()=>startRec(), 400);
-        } else {
-          finish('');
-        }
+        if(restartCount<MAX_RESTARTS){ restartCount++; setTimeout(()=>startRec(), 400); }
+        else { finish(''); }
       }
     }
 
-    // Main timeout - the ONLY place that resolves empty after full wait
-    mainTimer=setTimeout(()=>{
-      finish(bestResult);
-    },timeout+500);
-
-    // Start after brief delay for TTS cleanup
+    mainTimer=setTimeout(()=>{ finish(bestResult); },timeout+500);
     setTimeout(()=>startRec(), 300);
   });
 }
@@ -2586,7 +2742,7 @@ function runGuidedSession(){
         const statusEl=document.getElementById('sesEchoStatus');
         if(statusEl) statusEl.textContent='🔴 듣고 있어요... 따라 말해보세요!';
 
-        const result=await listenForSpeech('en-US',6000);
+        const result=await listenForSpeech('en-US',6000,{prompt:w.word});
         if(!document.getElementById('sesEchoArea')) return;
         if(statusEl) statusEl.textContent='';
 
@@ -2853,7 +3009,7 @@ function runGuidedSession(){
         document.getElementById('sesRevEchoRec').addEventListener('click',async()=>{
           const btn=document.getElementById('sesRevEchoRec');
           btn.textContent='🎤 듣고 있어요...';btn.disabled=true;
-          const result=await listenForSpeech('en-US',5000);
+          const result=await listenForSpeech('en-US',5000,{prompt:w.word});
           if(result){
             const score=getSimilarity(w.word,result);
             const cls=score>=80?'perfect':score>=50?'good':'retry';
@@ -3064,7 +3220,7 @@ async function runEcho(){
       if(tries>=MAX_TRIES) return;
       const statusEl=document.getElementById('echoListenStatus');
       if(statusEl) statusEl.textContent='🎤 듣고 있어요... 말해보세요!';
-      const result=await listenForSpeech('en-US',6000);
+      const result=await listenForSpeech('en-US',6000,{prompt:w.word});
       if(!document.getElementById('echoScoreArea')) return;
       if(statusEl) statusEl.textContent='';
       state.totalCount++; tries++;
@@ -3587,7 +3743,7 @@ async function runEchoSprintMission(body,mission){
       await speak(w);
       if(!document.getElementById('mListenStatus')) return;
       document.getElementById('mListenStatus').textContent='🔴 듣고 있어요...';
-      const result=await listenForSpeech('en-US',4000);
+      const result=await listenForSpeech('en-US',4000,{prompt:w});
       if(!document.getElementById('mResult')) return;
       document.getElementById('mListenStatus').textContent='';
       if(result&&getSimilarity(w,result)>=50){
@@ -3811,7 +3967,9 @@ async function toggleListening(){
   }
   
   setOrbState('listening');
-  const text=await listenForSpeech('ko-KR',10000);
+  const text=await listenForSpeech('ko-KR',10000,{
+    onInterim:(partial)=>{const el=document.getElementById('chatTranscript');if(el) el.textContent=partial+'...';}
+  });
   
   if(text){
     addChatMsg('user',text);
@@ -4081,9 +4239,13 @@ async function voiceConversationTurn(){
 
   // === LISTEN ===
   setVoiceOrbState('listening');
-  document.getElementById('voiceTranscript').textContent='';
+  const transcriptEl=document.getElementById('voiceTranscript');
+  transcriptEl.textContent='';
 
-  const text=await listenForSpeech(voiceSttLang,8000);
+  // Whisper 사용 시 녹음 상태 표시, Web Speech 폴백 시 interim 표시
+  const text=await listenForSpeech(voiceSttLang,8000,{
+    onInterim:(partial)=>{if(transcriptEl) transcriptEl.textContent=partial+'...';}
+  });
 
   if(!voiceActive || !voiceAutoLoop) return;
 
